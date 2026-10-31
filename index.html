@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>natx.fun</title>
+<meta name="description" content="Des petits trucs inutiles mais géniaux à faire sur Internet.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎈</text></svg>">
+<link rel="stylesheet" href="commun.css">
+<style>
+  header { text-align: center; padding: 56px 16px 20px; }
+  .logo {
+    font-family: var(--titre);
+    font-weight: 700;
+    font-size: clamp(56px, 12vw, 96px);
+    margin: 0;
+    letter-spacing: -2px;
+    line-height: 1;
+  }
+  .logo span { color: #ff5a36; }
+  .slogan { color: var(--gris); font-size: 18px; margin: 12px 0 0; }
+
+  .grille {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
+    gap: 30px;
+    max-width: 1080px;
+    margin: 30px auto 64px;
+    padding: 0 16px;
+  }
+  .carte {
+    display: block;
+    text-decoration: none;
+    background: var(--carte);
+    border: 3px solid var(--encre);
+    border-radius: 22px;
+    overflow: hidden;
+    box-shadow: 0 6px 0 var(--encre);
+    transition: transform .15s, box-shadow .15s;
+  }
+  .carte:hover { transform: translateY(-5px) rotate(-1deg); box-shadow: 0 11px 0 var(--encre); }
+  .carte:nth-child(even):hover { transform: translateY(-5px) rotate(1deg); }
+  .vignette {
+    height: 190px;
+    position: relative;
+    border-bottom: 3px solid var(--encre);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+  .infos { padding: 14px 20px 20px; }
+  .infos h2 { font-family: var(--titre); font-weight: 600; font-size: 25px; margin: 0 0 4px; }
+  .infos p { margin: 0; color: var(--gris); font-size: 15.5px; line-height: 1.4; }
+
+  /* 1. Bouton interdit */
+  .v-bouton { background: #ffd23f; gap: 18px; }
+  .etiquette {
+    font-family: var(--titre); font-weight: 700; font-size: 13px; letter-spacing: 2px;
+    background: var(--encre); color: #ffd23f; padding: 4px 10px; border-radius: 6px;
+  }
+  .mini-bouton {
+    width: 92px; height: 92px; border-radius: 50%;
+    border: 3px solid var(--encre);
+    background: radial-gradient(circle at 35% 30%, #ff8b7b 0, #ef2b2d 45%, #c2181b 100%);
+    box-shadow: 0 9px 0 #7a0d10, 0 11px 0 var(--encre);
+    transition: transform .1s, box-shadow .1s;
+  }
+  .carte:hover .mini-bouton { transform: translateY(6px); box-shadow: 0 3px 0 #7a0d10, 0 5px 0 var(--encre); }
+
+  /* 2. Pouvoirs nuls */
+  .v-pouvoirs { background: #a78bfa; }
+  .heros { font-size: 92px; line-height: 1; transform: translate(-40px, 18px); transition: transform .3s; }
+  .carte:hover .heros { transform: translate(-40px, 6px) rotate(-6deg); }
+  .bulle {
+    position: absolute; top: 22px; right: 18px; max-width: 150px;
+    background: #fff; border: 3px solid var(--encre); border-radius: 16px;
+    padding: 8px 12px; font-family: var(--titre); font-weight: 600; font-size: 15px;
+    transform: rotate(4deg);
+  }
+
+  /* 3. Pluie d'émojis */
+  .v-emojis { background: #7dd3fc; }
+  .v-emojis span {
+    position: absolute; font-size: 42px; line-height: 1;
+    transform: rotate(var(--r, 0deg));
+  }
+  .carte:hover .v-emojis span { animation: saut .55s var(--d, 0s); }
+  @keyframes saut { 40% { translate: 0 -26px; } }
+
+  /* 4. Réflexes */
+  .v-reflexe { background: linear-gradient(135deg, #ef4444 50%, #22c55e 50%); }
+  .eclair { font-size: 84px; line-height: 1; transition: transform .2s; }
+  .carte:hover .eclair { transform: scale(1.15) rotate(-8deg); }
+  .clique {
+    font-family: var(--titre); font-weight: 700; font-size: 20px; letter-spacing: 1px;
+    background: #fff; border: 3px solid var(--encre); border-radius: 10px; padding: 2px 12px; margin-top: 6px;
+  }
+
+  /* 5. Le plus lourd */
+  .v-poids { background: #6ee7b7; justify-content: flex-end; padding-bottom: 26px; }
+  .balance { position: relative; width: 210px; height: 64px; transform: rotate(-9deg); transform-origin: 50% 100%; transition: transform .4s; }
+  .carte:hover .balance { transform: rotate(9deg); }
+  .planche { position: absolute; left: 0; right: 0; bottom: 0; height: 10px; background: var(--encre); border-radius: 6px; }
+  .balance span { position: absolute; bottom: 8px; font-size: 48px; line-height: 1; }
+  .balance .g { left: 4px; }
+  .balance .d { right: 4px; }
+  .pivot { width: 0; height: 0; border-left: 22px solid transparent; border-right: 22px solid transparent; border-bottom: 34px solid var(--encre); }
+
+  /* 6. Arbre magique */
+  .v-arbre { background: linear-gradient(#fde68a, #fdba74); }
+  .v-arbre svg { position: absolute; bottom: 0; width: 230px; height: auto; }
+  .v-arbre .feuillage { transform-origin: 100px 150px; transition: transform .5s; }
+  .carte:hover .v-arbre .feuillage { transform: rotate(3deg); }
+
+  footer { text-align: center; color: var(--gris); padding: 0 16px 40px; font-size: 14px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1 class="logo">natx<span>.</span>fun</h1>
+  <p class="slogan">Des petits trucs inutiles mais géniaux à faire sur Internet.</p>
+</header>
+
+<main class="grille">
+
+  <a class="carte" href="bouton.html">
+    <div class="vignette v-bouton">
+      <span class="etiquette">NE PAS APPUYER</span>
+      <span class="mini-bouton"></span>
+    </div>
+    <div class="infos">
+      <h2>Le Bouton Interdit</h2>
+      <p>Il ne faut surtout pas appuyer dessus. Surtout pas.</p>
+    </div>
+  </a>
+
+  <a class="carte" href="pouvoirs.html">
+    <div class="vignette v-pouvoirs">
+      <span class="heros">🦸</span>
+      <span class="bulle">…mais seulement le mardi</span>
+    </div>
+    <div class="infos">
+      <h2>Pouvoirs Nuls</h2>
+      <p>Découvre ton super-pouvoir… et son terrible défaut.</p>
+    </div>
+  </a>
+
+  <a class="carte" href="emojis.html">
+    <div class="vignette v-emojis">
+      <span style="left:2%;bottom:-8px;--r:-12deg">🍉</span>
+      <span style="left:17%;bottom:-6px;--r:8deg;--d:.05s">🐱</span>
+      <span style="left:32%;bottom:-9px;--r:-4deg;--d:.1s">😂</span>
+      <span style="left:47%;bottom:-6px;--r:14deg;--d:.15s">⚽</span>
+      <span style="left:62%;bottom:-8px;--r:-10deg;--d:.2s">🍩</span>
+      <span style="left:77%;bottom:-7px;--r:6deg;--d:.25s">🐸</span>
+      <span style="left:10%;bottom:30px;--r:18deg;--d:.08s">🍓</span>
+      <span style="left:26%;bottom:32px;--r:-8deg;--d:.12s">🤩</span>
+      <span style="left:42%;bottom:31px;--r:4deg;--d:.18s">🐼</span>
+      <span style="left:58%;bottom:30px;--r:-16deg;--d:.22s">🍭</span>
+      <span style="left:34%;bottom:68px;--r:10deg;--d:.16s">🦊</span>
+      <span style="left:72%;top:22px;--r:-20deg;--d:.3s">🍋</span>
+    </div>
+    <div class="infos">
+      <h2>Pluie d'Émojis</h2>
+      <p>Fais tomber des centaines d'émojis. C'est tout. C'est génial.</p>
+    </div>
+  </a>
+
+  <a class="carte" href="reflexe.html">
+    <div class="vignette v-reflexe">
+      <span class="eclair">⚡</span>
+      <span class="clique">CLIQUE !</span>
+    </div>
+    <div class="infos">
+      <h2>Réflexes Éclair</h2>
+      <p>Es-tu plus rapide qu'un pilote de F1… ou qu'un paresseux ?</p>
+    </div>
+  </a>
+
+  <a class="carte" href="poids.html">
+    <div class="vignette v-poids">
+      <div class="balance"><span class="g">☁️</span><span class="d">🐋</span><i class="planche"></i></div>
+      <i class="pivot"></i>
+    </div>
+    <div class="infos">
+      <h2>Le Plus Lourd</h2>
+      <p>Nuage, baleine, tour Eiffel… lequel pèse le plus ?</p>
+    </div>
+  </a>
+
+  <a class="carte" href="arbre.html">
+    <div class="vignette v-arbre">
+      <svg viewBox="0 0 200 160" aria-hidden="true">
+        <ellipse cx="100" cy="176" rx="150" ry="34" fill="#65a30d" />
+        <g stroke="#5b3a29" stroke-linecap="round" fill="none">
+          <path d="M100 152 L100 104" stroke-width="11" />
+          <path d="M100 110 L74 80" stroke-width="6" />
+          <path d="M100 104 L128 74" stroke-width="6" />
+          <path d="M74 80 L58 58 M74 80 L84 54" stroke-width="3.5" />
+          <path d="M128 74 L118 50 M128 74 L148 56" stroke-width="3.5" />
+          <path d="M100 104 L101 66" stroke-width="4" />
+        </g>
+        <g class="feuillage">
+          <circle cx="58" cy="56" r="15" fill="#f59f00" />
+          <circle cx="84" cy="50" r="16" fill="#e8590c" />
+          <circle cx="101" cy="58" r="17" fill="#ffd43b" />
+          <circle cx="118" cy="46" r="16" fill="#e8590c" />
+          <circle cx="148" cy="54" r="15" fill="#f59f00" />
+          <circle cx="70" cy="70" r="11" fill="#ffd43b" />
+          <circle cx="134" cy="66" r="12" fill="#ffd43b" />
+          <circle cx="110" cy="36" r="10" fill="#f59f00" />
+        </g>
+      </svg>
+    </div>
+    <div class="infos">
+      <h2>L'Arbre Magique</h2>
+      <p>Plante des arbres et regarde les saisons passer.</p>
+    </div>
+  </a>
+
+</main>
+
+<footer>Fait par natx · Aucune pub, aucun compte, juste du fun.</footer>
+
+</body>
+</html>

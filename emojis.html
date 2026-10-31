@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pluie d'Émojis · natx.fun</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍉</text></svg>">
+<link rel="stylesheet" href="commun.css">
+<style>
+  html, body { height: 100%; overflow: hidden; }
+  body { background: linear-gradient(#bae6fd, #e0f2fe 70%); touch-action: none; user-select: none; }
+  canvas { position: fixed; inset: 0; width: 100%; height: 100%; cursor: crosshair; }
+  .astuce {
+    position: fixed; top: 22%; left: 0; right: 0; text-align: center; margin: 0; padding: 0 16px;
+    font-family: var(--titre); font-weight: 600; font-size: clamp(20px, 4vw, 30px);
+    pointer-events: none; transition: opacity .6s;
+  }
+  .compte {
+    position: fixed; top: 16px; right: 16px; font-family: var(--titre); font-weight: 600;
+    background: #fff; border: 2px solid var(--encre); border-radius: 999px; padding: 5px 14px; box-shadow: 0 3px 0 var(--encre);
+  }
+  .barre {
+    position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%);
+    width: max-content; max-width: calc(100% - 24px);
+    display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: center;
+    background: #fff; border: 3px solid var(--encre); border-radius: 20px; box-shadow: 0 5px 0 var(--encre); padding: 10px 12px;
+  }
+  .packs { display: flex; gap: 6px; }
+  .pack {
+    width: 44px; height: 44px; font-size: 24px; border-radius: 12px; border: 2px solid transparent;
+    background: #f1f5f9; cursor: pointer; padding: 0;
+  }
+  .pack.actif { border-color: var(--encre); background: #fde68a; }
+  .barre .btn { font-size: 16px; padding: 8px 14px; }
+</style>
+</head>
+<body>
+
+<a class="retour" href="index.html">← natx.fun</a>
+<canvas id="toile"></canvas>
+<p class="astuce" id="astuce">Clique (ou reste appuyé) pour faire pleuvoir des émojis</p>
+<div class="compte" id="compte">0 émoji</div>
+<nav class="barre" id="barre">
+  <div class="packs" id="packs"></div>
+  <button class="btn" id="secouer">💥 Secouer</button>
+  <button class="btn" id="inverser">🙃 Gravité</button>
+  <button class="btn" id="vider">🧹 Vider</button>
+</nav>
+
+<script>
+const PACKS = {
+  fruits: ['🍎', '🍊', '🍋', '🍉', '🍇', '🍓', '🍒', '🍑', '🥝', '🍍', '🥥', '🍌'],
+  animaux: ['🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼', '🐨', '🐯', '🦁', '🐸', '🐵', '🐧', '🐤'],
+  tetes: ['😀', '😂', '😎', '🤩', '🥳', '😜', '🤪', '😱', '🤯', '😴', '🤠', '👽', '🤖', '💩'],
+  sport: ['⚽', '🏀', '🏈', '⚾', '🎾', '🏐', '🏉', '🎱', '🥎'],
+  bonbons: ['🍬', '🍭', '🍫', '🍩', '🍪', '🧁', '🍰', '🍦', '🍿'],
+};
+const MAX = 600, GRAVITE = 2200, CELL = 60;
+
+const toile = document.getElementById('toile');
+const ctx = toile.getContext('2d');
+const barre = document.getElementById('barre');
+let W, H, sol, dpr;
+let balles = [], pack = PACKS.fruits, inverse = false;
+let appui = false, sx = 0, sy = 0, dernierAjout = 0;
+const images = new Map();
+
+function redimensionner() {
+  dpr = Math.min(2, window.devicePixelRatio || 1);
+  W = innerWidth; H = innerHeight;
+  toile.width = W * dpr; toile.height = H * dpr;
+  sol = barre.getBoundingClientRect().top - 10;
+}
+addEventListener('resize', redimensionner);
+redimensionner();
+
+// Chaque émoji est dessiné une seule fois dans une petite image (bien plus rapide)
+function image(e) {
+  let c = images.get(e);
+  if (!c) {
+    c = document.createElement('canvas');
+    c.width = c.height = 80;
+    const g = c.getContext('2d');
+    g.font = '64px "Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",sans-serif';
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    g.fillText(e, 40, 44);
+    images.set(e, c);
+  }
+  return c;
+}
+
+function hasard(l) { return l[Math.floor(Math.random() * l.length)]; }
+
+function ajouter(x, y) {
+  const r = 14 + Math.random() * 14;
+  balles.push({ x, y, px: x - (Math.random() - .5) * 4, py: y - Math.random() * 2, r, m: r * r, e: hasard(pack), a: Math.random() * 6.28 });
+  if (balles.length > MAX) balles.shift();
+}
+
+function resoudre(a, b) {
+  const dx = b.x - a.x, dy = b.y - a.y, min = a.r + b.r, d2 = dx * dx + dy * dy;
+  if (d2 >= min * min || d2 < 1e-6) return;
+  const d = Math.sqrt(d2), corr = (min - d) / d * .8, tot = a.m + b.m;
+  const ka = b.m / tot, kb = a.m / tot;
+  a.x -= dx * corr * ka; a.y -= dy * corr * ka;
+  b.x += dx * corr * kb; b.y += dy * corr * kb;
+}
+
+function collisions() {
+  const grille = new Map();
+  for (let i = 0; i < balles.length; i++) {
+    const b = balles[i];
+    const k = Math.floor(b.x / CELL) + Math.floor(b.y / CELL) * 4096;
+    let c = grille.get(k);
+    if (!c) grille.set(k, c = []);
+    c.push(i);
+  }
+  for (let i = 0; i < balles.length; i++) {
+    const a = balles[i];
+    const cx = Math.floor(a.x / CELL), cy = Math.floor(a.y / CELL);
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+      const c = grille.get(cx + dx + (cy + dy) * 4096);
+      if (!c) continue;
+      for (const j of c) if (j > i) resoudre(a, balles[j]);
+    }
+  }
+}
+
+function murs() {
+  for (const b of balles) {
+    const vx = b.x - b.px, vy = b.y - b.py;
+    if (b.x < b.r) { b.x = b.r; b.px = b.x + vx * .4; }
+    else if (b.x > W - b.r) { b.x = W - b.r; b.px = b.x + vx * .4; }
+    if (b.y < b.r) { b.y = b.r; b.py = b.y + vy * .4; b.px = b.x - vx * .92; }
+    else if (b.y > sol - b.r) { b.y = sol - b.r; b.py = b.y + vy * .4; b.px = b.x - vx * .92; }
+  }
+}
+
+// Physique « Verlet » : la vitesse est la différence entre la position actuelle et l'ancienne
+function pas(h) {
+  const ay = GRAVITE * (inverse ? -1 : 1) * h * h;
+  for (const b of balles) {
+    const vx = (b.x - b.px) * .998, vy = (b.y - b.py) * .998;
+    b.px = b.x; b.py = b.y;
+    b.x += vx; b.y += vy + ay;
+    b.a += vx / b.r;
+  }
+  for (let k = 0; k < 2; k++) { collisions(); murs(); }
+}
+
+function dessiner() {
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.clearRect(0, 0, toile.width, toile.height);
+  for (const b of balles) {
+    const s = b.r * 2.5, c = Math.cos(b.a), sn = Math.sin(b.a);
+    ctx.setTransform(c * dpr, sn * dpr, -sn * dpr, c * dpr, b.x * dpr, b.y * dpr);
+    ctx.drawImage(image(b.e), -s / 2, -s / 2, s, s);
+  }
+}
+
+let dernier = performance.now(), reste = 0, img = 0;
+const PAS = 1 / 240;
+function boucle(t) {
+  reste = Math.min(reste + (t - dernier) / 1000, PAS * 8);
+  dernier = t;
+  if (appui && t - dernierAjout > 35) { ajouter(sx + (Math.random() - .5) * 24, sy); dernierAjout = t; }
+  while (reste >= PAS) { pas(PAS); reste -= PAS; }
+  dessiner();
+  if (++img % 10 === 0) document.getElementById('compte').textContent = balles.length + (balles.length > 1 ? ' émojis' : ' émoji');
+  requestAnimationFrame(boucle);
+}
+requestAnimationFrame(boucle);
+
+toile.addEventListener('pointerdown', e => {
+  appui = true; sx = e.clientX; sy = e.clientY; dernierAjout = 0;
+  document.getElementById('astuce').style.opacity = 0;
+});
+addEventListener('pointermove', e => { sx = e.clientX; sy = e.clientY; });
+addEventListener('pointerup', () => appui = false);
+addEventListener('pointercancel', () => appui = false);
+
+const packsEl = document.getElementById('packs');
+for (const [nom, liste] of Object.entries(PACKS)) {
+  const b = document.createElement('button');
+  b.className = 'pack' + (liste === pack ? ' actif' : '');
+  b.textContent = liste[0];
+  b.title = nom;
+  b.addEventListener('click', () => {
+    pack = liste;
+    packsEl.querySelectorAll('.pack').forEach(p => p.classList.toggle('actif', p === b));
+  });
+  packsEl.appendChild(b);
+}
+
+document.getElementById('secouer').addEventListener('click', () => {
+  const sens = inverse ? -1 : 1;
+  for (const b of balles) {
+    b.px = b.x + (Math.random() - .5) * 30;
+    b.py = b.y + sens * (10 + Math.random() * 25);
+  }
+});
+document.getElementById('inverser').addEventListener('click', () => inverse = !inverse);
+document.getElementById('vider').addEventListener('click', () => balles = []);
+
+// Petite pluie de départ
+let n = 0;
+const depart = setInterval(() => {
+  ajouter(40 + Math.random() * (W - 80), -20);
+  if (++n >= 40) clearInterval(depart);
+}, 30);
+</script>
+</body>
+</html>

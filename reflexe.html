@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Réflexes Éclair · natx.fun</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
+<link rel="stylesheet" href="commun.css">
+<style>
+  html, body { height: 100%; }
+  .panneau {
+    position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+    padding: 70px 16px 30px; text-align: center; color: #fff; cursor: pointer; user-select: none;
+    touch-action: manipulation; outline: none;
+  }
+  .accueil, .resultat, .fin { background: #3b82f6; }
+  .attente { background: #ef4444; }
+  .go { background: #22c55e; }
+  .trop-tot { background: #f59e0b; }
+  .contenu { max-width: 620px; }
+  .icone { font-size: 80px; line-height: 1; }
+  h1 { font-family: var(--titre); font-weight: 700; font-size: clamp(38px, 8vw, 64px); margin: 10px 0; line-height: 1.05; }
+  .grand { font-family: var(--titre); font-weight: 700; font-size: clamp(64px, 16vw, 130px); margin: 0; line-height: 1; }
+  p { font-size: 20px; margin: 10px 0; }
+  .discret { opacity: .85; font-size: 16px; }
+  .animal { font-size: 26px; font-weight: 800; }
+  .barres { display: grid; gap: 6px; margin: 22px auto; max-width: 420px; text-align: left; }
+  .barres div { display: flex; align-items: center; gap: 10px; font-weight: 700; }
+  .barres i { display: block; height: 18px; background: #fff; border-radius: 9px; }
+</style>
+</head>
+<body>
+
+<a class="retour" href="index.html">← natx.fun</a>
+<main class="panneau accueil" id="panneau" tabindex="0">
+  <div class="contenu" id="contenu"></div>
+</main>
+
+<script>
+const ESSAIS = 5;
+const ANIMAUX = [
+  [170, '🪰', "une mouche (impossible à attraper)"],
+  [210, '🏎️', "un pilote de F1"],
+  [250, '🐱', "un chat qui chasse un laser"],
+  [300, '🙂', "un humain en pleine forme"],
+  [360, '😪', "un humain un lundi matin"],
+  [450, '🐌', "un escargot motivé"],
+  [Infinity, '🦥', "un paresseux en pleine sieste"],
+];
+
+const panneau = document.getElementById('panneau');
+const contenu = document.getElementById('contenu');
+let etat, temps = [], t0 = 0, minuteur = null, depuis = 0;
+
+function lireRecord() { try { return Number(localStorage.getItem('natx-reflexe-record')) || 0; } catch { return 0; } }
+function ecrireRecord(v) { try { localStorage.setItem('natx-reflexe-record', v); } catch {} }
+
+function afficher(nouvelEtat, html) {
+  etat = nouvelEtat;
+  depuis = performance.now();
+  panneau.className = 'panneau ' + nouvelEtat;
+  contenu.innerHTML = html;
+}
+
+function accueil() {
+  temps = [];
+  const rec = lireRecord();
+  afficher('accueil', `
+    <div class="icone">⚡</div>
+    <h1>Réflexes Éclair</h1>
+    <p>Quand l'écran devient <b>vert</b>, clique le plus vite possible.</p>
+    <p class="discret">${ESSAIS} essais · clique n'importe où pour commencer${rec ? ` · ton record : ${rec} ms` : ''}</p>`);
+}
+
+function attendre() {
+  afficher('attente', `<p class="grand">…</p><h1>Attends le vert</h1>`);
+  minuteur = setTimeout(go, 1500 + Math.random() * 3000);
+}
+
+function go() {
+  afficher('go', `<h1 class="grand">CLIQUE !</h1>`);
+  requestAnimationFrame(() => t0 = performance.now());
+}
+
+function action(e) {
+  if (performance.now() - depuis < 250 && (etat === 'resultat' || etat === 'fin' || etat === 'trop-tot')) return;
+  if (etat === 'accueil' || etat === 'resultat' || etat === 'trop-tot') return attendre();
+  if (etat === 'attente') {
+    clearTimeout(minuteur);
+    return afficher('trop-tot', `<div class="icone">😅</div><h1>Trop tôt !</h1><p>Attends que l'écran soit vert. Clique pour réessayer.</p>`);
+  }
+  if (etat === 'go') {
+    const ms = Math.round((e.timeStamp || performance.now()) - t0);
+    temps.push(Math.max(1, ms));
+    if (temps.length >= ESSAIS) return fin();
+    return afficher('resultat', `<p class="grand">${ms} ms</p><p>Essai ${temps.length}/${ESSAIS} — clique pour continuer</p>`);
+  }
+  if (etat === 'fin') return accueil();
+}
+
+function fin() {
+  const moy = Math.round(temps.reduce((a, b) => a + b, 0) / temps.length);
+  const meilleur = Math.min(...temps);
+  const [, emoji, nom] = ANIMAUX.find(([max]) => moy < max);
+  const ancien = lireRecord();
+  const nouveau = !ancien || moy < ancien;
+  if (nouveau) ecrireRecord(moy);
+  const barres = temps.map((t, i) =>
+    `<div><span>${i + 1}.</span><i style="width:${Math.min(100, t / 6)}%"></i><span>${t} ms</span></div>`).join('');
+  afficher('fin', `
+    <div class="icone">${emoji}</div>
+    <p>Moyenne</p>
+    <p class="grand">${moy} ms</p>
+    <p class="animal">Tu es aussi rapide que ${nom}.</p>
+    <div class="barres">${barres}</div>
+    <p>Meilleur essai : ${meilleur} ms ${nouveau ? '· 🎉 Nouveau record !' : `· Record : ${ancien} ms`}</p>
+    <p class="discret">La plupart des gens font environ 250 ms. Clique pour rejouer.</p>`);
+}
+
+panneau.addEventListener('pointerdown', action);
+addEventListener('keydown', e => {
+  if (e.code === 'Space' || e.code === 'Enter') { e.preventDefault(); if (!e.repeat) action(e); }
+});
+accueil();
+</script>
+</body>
+</html>

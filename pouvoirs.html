@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pouvoirs Nuls · natx.fun</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🦸</text></svg>">
+<link rel="stylesheet" href="commun.css">
+<style>
+  body { background: #f1ebff; }
+  .page { max-width: 680px; margin: 0 auto; padding: 80px 16px 60px; text-align: center; }
+  h1 { font-family: var(--titre); font-weight: 700; font-size: clamp(34px, 7vw, 54px); margin: 0; line-height: 1.1; }
+  h1 span { color: #7c3aed; }
+  .sous { color: var(--gris); font-size: 18px; margin: 10px 0 34px; }
+
+  .machine {
+    background: #8b5cf6; border: 3px solid var(--encre); border-radius: 24px;
+    box-shadow: 0 8px 0 var(--encre); padding: 22px; display: grid; gap: 14px;
+  }
+  .rouleau small { display: block; text-align: left; font-family: var(--titre); font-weight: 600; font-size: 17px; color: #fff; margin: 0 0 6px 4px; }
+  .fenetre {
+    background: #fff; border: 3px solid var(--encre); border-radius: 14px;
+    min-height: 3.4em; padding: 10px 16px; overflow: hidden;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--titre); font-weight: 600; font-size: clamp(19px, 3.6vw, 24px);
+  }
+  .fenetre span.tic { animation: tic .12s; }
+  @keyframes tic { from { transform: translateY(-40%); opacity: .3; filter: blur(2px); } }
+  .tirer { margin-top: 6px; font-size: 22px; padding: 14px; background: #ffd23f; }
+
+  .carte-heros {
+    margin-top: 34px; background: #fff; border: 3px solid var(--encre); border-radius: 22px;
+    box-shadow: 0 8px 0 var(--encre); padding: 26px 22px; animation: arrive .45s cubic-bezier(.3, 1.5, .5, 1);
+  }
+  .carte-heros[hidden] { display: none; }
+  .carte-heros.legende { background: linear-gradient(135deg, #fff7d1, #ffe58a); }
+  @keyframes arrive { from { transform: scale(.7) rotate(-4deg); opacity: 0; } }
+  .badge { display: inline-block; font-family: var(--titre); font-weight: 700; font-size: 13px; letter-spacing: 2px; background: var(--encre); color: #fff; padding: 4px 10px; border-radius: 6px; }
+  .carte-heros h2 { font-family: var(--titre); font-weight: 700; font-size: clamp(28px, 6vw, 40px); margin: 14px 0 8px; }
+  .carte-heros .phrase { font-size: 20px; line-height: 1.45; margin: 0 0 16px; }
+  .utilite { font-weight: 700; margin: 0 0 18px; }
+  .etoiles { color: #f59f00; font-size: 22px; letter-spacing: 2px; }
+  .utilite em { display: block; font-weight: 600; color: var(--gris); margin-top: 4px; }
+  .actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+  .actions .btn { font-size: 16px; }
+
+  .historique { margin-top: 40px; text-align: left; }
+  .historique[hidden] { display: none; }
+  .historique h3 { font-family: var(--titre); font-weight: 600; font-size: 20px; margin: 0 0 10px; }
+  .historique ul { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
+  .historique li { background: #fff; border: 2px solid var(--encre); border-radius: 12px; padding: 10px 14px; font-size: 15px; }
+  .historique b { font-family: var(--titre); font-weight: 600; }
+</style>
+</head>
+<body>
+
+<a class="retour" href="index.html">← natx.fun</a>
+
+<main class="page">
+  <h1>Ton super-pouvoir <span>(nul)</span></h1>
+  <p class="sous">Chaque super-pouvoir a un petit défaut. Le tien est sûrement pire.</p>
+
+  <section class="machine">
+    <div class="rouleau"><small>Tu peux…</small><div class="fenetre"><span id="r1">???</span></div></div>
+    <div class="rouleau"><small>…mais</small><div class="fenetre"><span id="r2">???</span></div></div>
+    <button class="btn tirer" id="tirer">🎰 Tirer mon pouvoir</button>
+  </section>
+
+  <section class="carte-heros" id="carte" hidden>
+    <span class="badge">CARTE DE HÉROS</span>
+    <h2 id="nom"></h2>
+    <p class="phrase" id="phrase"></p>
+    <p class="utilite">Utilité : <span class="etoiles" id="etoiles"></span><em id="avis"></em></p>
+    <div class="actions">
+      <button class="btn" id="copier">📋 Copier</button>
+      <button class="btn" id="encore">🔁 Encore</button>
+    </div>
+  </section>
+
+  <section class="historique" id="historique" hidden>
+    <h3>Tes anciens pouvoirs</h3>
+    <ul id="liste"></ul>
+  </section>
+</main>
+
+<script>
+const pouvoirs = [
+  "voler", "devenir invisible", "lire dans les pensées", "te téléporter", "parler aux animaux",
+  "arrêter le temps", "courir à la vitesse de la lumière", "respirer sous l'eau", "lancer des boules de feu",
+  "traverser les murs", "voir à travers les objets", "te cloner", "contrôler la météo", "soulever 10 tonnes",
+  "deviner les contrôles surprises", "parler toutes les langues du monde", "rétrécir à la taille d'une fourmi",
+  "lire un livre en une seconde", "faire pousser des plantes en claquant des doigts", "voyager dans le temps",
+  "ne jamais avoir sommeil", "contrôler l'électricité", "gagner à tous les jeux vidéo",
+  "copier le pouvoir des autres", "ouvrir des portails", "sauter jusqu'aux nuages",
+];
+const defauts = [
+  "seulement à 3 cm du sol", "uniquement quand personne ne te regarde", "seulement le mardi entre 14 h et 14 h 05",
+  "tu dois chanter une chanson de Noël à chaque fois", "ça te donne le hoquet pendant 3 heures",
+  "seulement si tu portes des chaussettes dépareillées", "tu éternues à chaque utilisation",
+  "uniquement en présence d'un pigeon", "ça fait un bruit de pet très fort", "ton nez devient bleu pendant une semaine",
+  "seulement les yeux fermés", "il faut d'abord remplir un formulaire en 3 exemplaires", "ça dure exactement 0,4 seconde",
+  "ta mère reçoit une notification à chaque fois", "seulement si tu as mangé un brocoli juste avant",
+  "il faut attendre une mise à jour de 47 heures", "uniquement pendant les cours de maths", "tes cheveux deviennent fluo",
+  "à chaque fois, tu oublies ton propre prénom", "seulement en marchant en crabe", "ça vide la batterie de ton téléphone",
+  "c'est une version d'essai qui expire demain", "un mime te suit partout en imitant tout ce que tu fais",
+  "tu dois crier ton nom de héros très fort avant", "seulement sous la pluie", "uniquement le jour de ton anniversaire",
+  "tous les chats du quartier te détestent", "ta voix devient celle d'un canard",
+];
+const titres = ["Capitaine", "Docteur", "Super", "Méga", "L'Incroyable", "Professeur", "Le Grand", "Agent", "Ultra", "Lady", "Sir", "Mister"];
+const noms = ["Chaussette", "Brocoli", "Tartine", "Pigeon", "Cartable", "Raclette", "Trottinette", "Hoquet", "Patate", "Yaourt", "Moustache", "Croissant", "Wifi", "Gomme", "Compas", "Nugget"];
+const avis = [
+  ["Totalement inutile.", "Même ta grand-mère n'en voudrait pas.", "On peut te rembourser ?"],
+  ["Utile… un jour, peut-être.", "Ça peut servir dans une situation très précise.", "Bof, mais c'est mieux que rien."],
+  ["Presque bien ! Presque.", "Les vrais héros ont commencé comme ça.", "Pas mal, pour un pouvoir nul."],
+];
+const LEGENDE = "aucun défaut ! ✨ Pouvoir LÉGENDAIRE";
+
+const r1 = document.getElementById('r1'), r2 = document.getElementById('r2');
+const tirer = document.getElementById('tirer'), carte = document.getElementById('carte');
+const liste = document.getElementById('liste');
+let texteActuel = '';
+
+function hasard(l) { return l[Math.floor(Math.random() * l.length)]; }
+
+// Fait défiler un rouleau de plus en plus lentement
+function rouler(el, valeurs, duree, finale) {
+  return new Promise(fini => {
+    const fin = performance.now() + duree;
+    let delai = 45;
+    (function tour() {
+      const dernier = performance.now() >= fin;
+      el.textContent = dernier ? finale : hasard(valeurs);
+      el.classList.remove('tic');
+      void el.offsetWidth;
+      el.classList.add('tic');
+      if (dernier) { fini(); return; }
+      delai *= 1.08;
+      setTimeout(tour, delai);
+    })();
+  });
+}
+
+async function lancer() {
+  tirer.disabled = true;
+  carte.hidden = true;
+  const p = hasard(pouvoirs);
+  const legendaire = Math.random() < .04;
+  const d = legendaire ? LEGENDE : hasard(defauts);
+  await Promise.all([rouler(r1, pouvoirs, 1100, p), rouler(r2, defauts, 1800, d)]);
+
+  const nom = hasard(titres) + ' ' + hasard(noms);
+  const etoiles = legendaire ? 5 : Math.floor(Math.random() * 3);
+  document.getElementById('nom').textContent = nom;
+  document.getElementById('phrase').textContent = legendaire
+    ? `Tu peux ${p}… et sans aucun défaut. Incroyable.`
+    : `Tu peux ${p}… mais ${d}.`;
+  document.getElementById('etoiles').textContent = '★'.repeat(etoiles) + '☆'.repeat(5 - etoiles);
+  document.getElementById('avis').textContent = legendaire ? "Tu as eu une chance sur 25. Respect." : hasard(avis[etoiles]);
+  carte.classList.toggle('legende', legendaire);
+  carte.hidden = false;
+  texteActuel = `${nom} : ${document.getElementById('phrase').textContent} (natx.fun)`;
+
+  const li = document.createElement('li');
+  li.innerHTML = `<b></b> — <span></span>`;
+  li.querySelector('b').textContent = nom;
+  li.querySelector('span').textContent = document.getElementById('phrase').textContent;
+  liste.prepend(li);
+  while (liste.children.length > 5) liste.lastChild.remove();
+  document.getElementById('historique').hidden = liste.children.length < 2;
+
+  tirer.disabled = false;
+  tirer.textContent = '🎰 Encore un !';
+}
+
+tirer.addEventListener('click', lancer);
+document.getElementById('encore').addEventListener('click', lancer);
+document.getElementById('copier').addEventListener('click', async e => {
+  const b = e.currentTarget;
+  try { await navigator.clipboard.writeText(texteActuel); b.textContent = '✅ Copié !'; }
+  catch { b.textContent = '😕 Impossible'; }
+  setTimeout(() => b.textContent = '📋 Copier', 1500);
+});
+</script>
+</body>
+</html>

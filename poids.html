@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Le Plus Lourd · natx.fun</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚖️</text></svg>">
+<link rel="stylesheet" href="commun.css">
+<style>
+  body { background: #e6fbf2; }
+  .page { max-width: 820px; margin: 0 auto; padding: 80px 16px 50px; text-align: center; }
+  h1 { font-family: var(--titre); font-weight: 700; font-size: clamp(32px, 7vw, 52px); margin: 0; line-height: 1.1; }
+  h1 span { color: #059669; }
+  .score { display: flex; gap: 20px; justify-content: center; font-weight: 700; font-size: 18px; margin: 14px 0 28px; }
+  .score b { font-family: var(--titre); font-size: 22px; }
+
+  .duel { display: grid; grid-template-columns: 1fr auto 1fr; gap: 16px; align-items: center; }
+  .choix {
+    background: #fff; border: 3px solid var(--encre); border-radius: 22px; box-shadow: 0 7px 0 var(--encre);
+    padding: 26px 16px; min-height: 270px; cursor: pointer; color: var(--encre);
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
+    transition: transform .12s, box-shadow .12s, background .3s;
+  }
+  .choix:hover:not(:disabled) { transform: translateY(-4px); box-shadow: 0 11px 0 var(--encre); }
+  .choix:disabled { cursor: default; }
+  .choix.bon { background: #bbf7d0; }
+  .choix.mauvais { background: #fecaca; }
+  .emoji { font-size: 86px; line-height: 1; }
+  .nom { font-family: var(--titre); font-weight: 600; font-size: 22px; }
+  .poids { font-family: var(--titre); font-weight: 700; font-size: 26px; min-height: 1.3em; }
+  .poids sup { font-size: .6em; }
+  .ou { font-family: var(--titre); font-weight: 700; font-size: 22px; background: var(--encre); color: #fff; border-radius: 50%; width: 56px; height: 56px; display: grid; place-items: center; }
+
+  .verdict { font-size: 19px; line-height: 1.45; min-height: 3em; margin: 26px auto 14px; max-width: 620px; }
+  .verdict b { font-family: var(--titre); }
+  .verdict sup { font-size: .65em; }
+  #suivant[hidden] { display: none; }
+
+  @media (max-width: 600px) {
+    .duel { grid-template-columns: 1fr; }
+    .ou { margin: 0 auto; }
+    .choix { min-height: 0; padding: 18px; }
+    .emoji { font-size: 64px; }
+  }
+</style>
+</head>
+<body>
+
+<a class="retour" href="index.html">← natx.fun</a>
+
+<main class="page">
+  <h1>Lequel est le plus <span>lourd</span> ?</h1>
+  <p class="score"><span>Série : <b id="serie">0</b></span><span>Record : <b id="record">0</b></span></p>
+  <section class="duel">
+    <button class="choix" id="c0"><span class="emoji"></span><span class="nom"></span><span class="poids"></span></button>
+    <div class="ou">OU</div>
+    <button class="choix" id="c1"><span class="emoji"></span><span class="nom"></span><span class="poids"></span></button>
+  </section>
+  <p class="verdict" id="verdict"></p>
+  <button class="btn" id="suivant" hidden>Suivant →</button>
+</main>
+
+<script>
+// [émoji, nom, poids en kg] — valeurs moyennes approximatives
+const OBJETS = [
+  ['🐜', "Une fourmi", 3e-6],
+  ['🍚', "Un grain de riz", 2.5e-5],
+  ['💧', "Une goutte d'eau", 5e-5],
+  ['🐝', "Une abeille", 1e-4],
+  ['💎', "Un diamant d'un carat", 2e-4],
+  ['📄', "Une feuille A4", .005],
+  ['🪙', "Une pièce de 1 €", .0075],
+  ['🐭', "Une souris", .02],
+  ['🎾', "Une balle de tennis", .058],
+  ['🍌', "Une banane", .12],
+  ['📱', "Un smartphone", .19],
+  ['🎮', "Une manette de PS5", .28],
+  ['⚽', "Un ballon de foot", .43],
+  ['🥛', "Une brique de lait d'un litre", 1.03],
+  ['🧠', "Un cerveau humain", 1.4],
+  ['👶', "Un bébé à la naissance", 3.3],
+  ['🐈', "Un chat", 4],
+  ['🎒', "Un cartable de 6e bien rempli", 8],
+  ['🐕', "Un labrador", 30],
+  ['🧒', "Un élève de 4e", 45],
+  ['🧍', "Un adulte", 70],
+  ['🦍', "Un gorille", 160],
+  ['🎹', "Un piano droit", 250],
+  ['🐴', "Un cheval", 500],
+  ['🐄', "Une vache", 700],
+  ['🚗', "Une petite voiture", 1100],
+  ['🦛', "Un hippopotame", 1500],
+  ['🦏', "Un rhinocéros blanc", 2300],
+  ['🐘', "Un éléphant d'Afrique", 6000],
+  ['🦖', "Un T-rex", 8000],
+  ['🚌', "Un bus", 12000],
+  ['🐋', "Une baleine bleue", 1.5e5],
+  ['🗽', "La statue de la Liberté", 2.25e5],
+  ['✈️', "Un Airbus A380 (à vide)", 2.77e5],
+  ['🛰️', "La Station spatiale internationale", 4.2e5],
+  ['☁️', "Un petit nuage", 5e5],
+  ['🗼', "La tour Eiffel", 1.01e7],
+  ['🚢', "Le Titanic", 5.23e7],
+  ['🔺', "La pyramide de Khéops", 6e9],
+  ['👥', "L'humanité entière", 4e11],
+  ['🌬️', "L'atmosphère de la Terre", 5.15e18],
+  ['🌕', "La Lune", 7.35e22],
+  ['🌍', "La Terre", 5.97e24],
+  ['🪐', "Jupiter", 1.9e27],
+  ['☀️', "Le Soleil", 1.99e30],
+];
+
+const choix = [document.getElementById('c0'), document.getElementById('c1')];
+const verdict = document.getElementById('verdict');
+const suivant = document.getElementById('suivant');
+let paire, serie = 0, record = 0, recents = [], joue = false;
+
+try { record = Number(localStorage.getItem('natx-poids-record')) || 0; } catch {}
+document.getElementById('record').textContent = record;
+
+function nombre(x) { return x.toLocaleString('fr-FR', { maximumSignificantDigits: 3 }); }
+
+function formater(kg) {
+  if (kg < .001) return nombre(kg * 1e6) + ' mg';
+  if (kg < 1) return nombre(kg * 1000) + ' g';
+  if (kg < 1000) return nombre(kg) + ' kg';
+  const t = kg / 1000;
+  if (t < 1e6) return nombre(t) + ' t';
+  if (t < 1e9) return nombre(t / 1e6) + ' millions de t';
+  if (t < 1e12) return nombre(t / 1e9) + ' milliards de t';
+  const e = Math.floor(Math.log10(kg));
+  return nombre(kg / 10 ** e) + ' × 10<sup>' + e + '</sup> kg';
+}
+
+function fois(r) {
+  if (r < 10) return r.toLocaleString('fr-FR', { maximumFractionDigits: 1 });
+  if (r < 1e6) return Math.round(r).toLocaleString('fr-FR');
+  if (r < 1e9) return nombre(r / 1e6) + ' millions de';
+  if (r < 1e12) return nombre(r / 1e9) + ' milliards de';
+  return '10<sup>' + Math.round(Math.log10(r)) + '</sup>';
+}
+
+function minuscule(s) { return s.charAt(0).toLowerCase() + s.slice(1); }
+function que(s) { return /^[aeiouyéèàh]/i.test(s) ? "qu'" + minuscule(s) : 'que ' + minuscule(s); }
+
+// Plus la série est longue, plus les deux poids sont proches
+function nouvellePaire() {
+  const ecartMin = Math.max(1.3, 30 / (1 + serie * .8));
+  for (let essai = 0; essai < 500; essai++) {
+    const a = OBJETS[Math.floor(Math.random() * OBJETS.length)];
+    const b = OBJETS[Math.floor(Math.random() * OBJETS.length)];
+    if (a === b || recents.includes(a) || recents.includes(b)) continue;
+    const r = Math.max(a[2], b[2]) / Math.min(a[2], b[2]);
+    if (r >= ecartMin || essai > 400 && r >= 1.3) {
+      recents = [...recents, a, b].slice(-8);
+      return [a, b];
+    }
+  }
+}
+
+function manche() {
+  paire = nouvellePaire();
+  joue = false;
+  choix.forEach((c, i) => {
+    c.disabled = false;
+    c.classList.remove('bon', 'mauvais');
+    c.querySelector('.emoji').textContent = paire[i][0];
+    c.querySelector('.nom').textContent = paire[i][1];
+    c.querySelector('.poids').textContent = '?';
+  });
+  verdict.innerHTML = '';
+  suivant.hidden = true;
+}
+
+// Le chiffre « monte » jusqu'au vrai poids
+function compter(el, kg) {
+  const debut = performance.now(), depart = Math.log(Math.max(kg / 1e4, 1e-7)), arrivee = Math.log(kg);
+  (function tour(t) {
+    const p = Math.min(1, (t - debut) / 900), e = 1 - (1 - p) ** 3;
+    el.innerHTML = formater(Math.exp(depart + (arrivee - depart) * e));
+    if (p < 1) requestAnimationFrame(tour); else el.innerHTML = formater(kg);
+  })(debut);
+}
+
+function choisir(i) {
+  if (joue) return;
+  joue = true;
+  const lourd = paire[0][2] > paire[1][2] ? 0 : 1;
+  const gagne = i === lourd;
+  choix.forEach((c, k) => {
+    c.disabled = true;
+    compter(c.querySelector('.poids'), paire[k][2]);
+  });
+  choix[lourd].classList.add('bon');
+  if (!gagne) choix[i].classList.add('mauvais');
+
+  const L = paire[lourd], l = paire[1 - lourd];
+  const fait = `${L[1]} pèse environ <b>${fois(L[2] / l[2])} fois</b> plus ${que(l[1])}.`;
+  if (gagne) {
+    serie++;
+    if (serie > record) {
+      record = serie;
+      try { localStorage.setItem('natx-poids-record', record); } catch {}
+    }
+    verdict.innerHTML = `✅ <b>Bien vu !</b> ${fait}`;
+    suivant.textContent = 'Suivant →';
+  } else {
+    verdict.innerHTML = `❌ <b>Raté !</b> ${fait}<br>Série finale : <b>${serie}</b>`;
+    serie = 0;
+    suivant.textContent = '🔁 Rejouer';
+  }
+  document.getElementById('serie').textContent = serie;
+  document.getElementById('record').textContent = record;
+  setTimeout(() => { suivant.hidden = false; suivant.focus(); }, 700);
+}
+
+choix.forEach((c, i) => c.addEventListener('click', () => choisir(i)));
+suivant.addEventListener('click', manche);
+addEventListener('keydown', e => {
+  if (e.key === 'ArrowLeft' || e.key === '1') choisir(0);
+  if (e.key === 'ArrowRight' || e.key === '2') choisir(1);
+});
+manche();
+</script>
+</body>
+</html>

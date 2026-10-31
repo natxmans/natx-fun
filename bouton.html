@@ -1,0 +1,331 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Le Bouton Interdit · natx.fun</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔴</text></svg>">
+<link rel="stylesheet" href="commun.css">
+<style>
+  body { min-height: 100vh; overflow: hidden; transition: background .6s, color .6s; }
+  body.nuit { background: #15131d; color: #f4f1ea; }
+  body.alerte { animation: alerte .6s infinite; }
+  @keyframes alerte { 50% { background: #ffc9c2; } }
+
+  .scene {
+    min-height: 100vh;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 36px; padding: 80px 16px 70px; text-align: center;
+    transition: transform 1s cubic-bezier(.5, -.3, .4, 1.3);
+  }
+  .scene.envers { transform: rotate(180deg); }
+  .scene.secoue { animation: secoue .5s; }
+  @keyframes secoue {
+    20% { transform: translate(-12px, 4px) rotate(-2deg); }
+    40% { transform: translate(10px, -6px) rotate(2deg); }
+    60% { transform: translate(-8px, 2px); }
+    80% { transform: translate(6px, -2px); }
+  }
+
+  .message {
+    font-family: var(--titre); font-weight: 600;
+    font-size: clamp(24px, 4.5vw, 40px);
+    max-width: 720px; margin: 0; min-height: 2.6em;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .message.pop { animation: pop .3s; }
+  @keyframes pop { from { transform: scale(.92); opacity: .4; } }
+
+  .zone { min-height: 240px; width: 100%; display: flex; align-items: center; justify-content: center; }
+
+  .gros {
+    --taille: 180px;
+    width: var(--taille); height: var(--taille);
+    border-radius: 50%;
+    border: 4px solid var(--encre);
+    background: radial-gradient(circle at 35% 30%, #ff8b7b 0, #ef2b2d 45%, #c2181b 100%);
+    box-shadow: 0 12px 0 #7a0d10, 0 15px 0 var(--encre);
+    cursor: pointer; position: relative;
+    transition: width .4s, height .4s, transform .08s, box-shadow .08s, left .3s, top .3s;
+  }
+  .gros:active { transform: translateY(9px); box-shadow: 0 3px 0 #7a0d10, 0 6px 0 var(--encre); }
+  .gros.transpire::after {
+    content: '💦'; position: absolute; top: -12px; right: -18px; font-size: 38px;
+    animation: goutte 1s infinite;
+  }
+  @keyframes goutte { to { transform: translateY(34px); opacity: 0; } }
+  .gros.chaud {
+    background: radial-gradient(circle at 35% 30%, #ffe08a, #ff8a1a 45%, #e0410f);
+    animation: vibre .08s infinite;
+  }
+  @keyframes vibre { 0% { translate: 2px 0; } 50% { translate: -2px 1px; } 100% { translate: 0 -2px; } }
+
+  .essaim { display: flex; flex-wrap: wrap; justify-content: center; gap: 18px; max-width: 560px; }
+  .petit {
+    width: 74px; height: 74px; border-radius: 50%;
+    border: 3px solid var(--encre);
+    background: radial-gradient(circle at 35% 30%, #ff8b7b 0, #ef2b2d 45%, #c2181b 100%);
+    box-shadow: 0 7px 0 #7a0d10, 0 9px 0 var(--encre);
+    cursor: pointer;
+  }
+  .petit:active { transform: translateY(5px); box-shadow: 0 2px 0 #7a0d10, 0 4px 0 var(--encre); }
+  .petit.boum { animation: boum .35s forwards; pointer-events: none; }
+  @keyframes boum { to { transform: scale(1.5); opacity: 0; } }
+
+  .compteur { position: fixed; bottom: 16px; left: 0; right: 0; text-align: center; color: var(--gris); font-weight: 700; margin: 0; }
+  .nuit .compteur { color: #9a96a8; }
+
+  .trophee { display: flex; flex-direction: column; align-items: center; gap: 8px; animation: chute .9s cubic-bezier(.3, 1.6, .5, 1); }
+  .trophee span { font-size: 96px; line-height: 1; }
+  .trophee small {
+    font-family: var(--titre); font-weight: 600; font-size: 18px; color: var(--encre);
+    background: #ffd23f; border: 3px solid var(--encre); padding: 4px 12px; border-radius: 10px;
+  }
+  @keyframes chute { from { transform: translateY(-300px); } }
+
+  .confetti { position: fixed; top: -20px; width: 10px; height: 14px; z-index: 50; pointer-events: none; animation: tombe linear forwards; }
+  @keyframes tombe { to { transform: translateY(110vh) rotate(720deg); } }
+
+  .crash {
+    position: fixed; inset: 0; z-index: 2000;
+    background: #1e5bd8; color: #fff;
+    display: flex; align-items: center; justify-content: center; padding: 24px; cursor: wait;
+  }
+  .crash[hidden] { display: none; }
+  .crash-contenu { max-width: 640px; }
+  .smiley { font-size: 110px; line-height: 1; margin-bottom: 24px; }
+  .crash p { font-size: 20px; margin: 0 0 16px; }
+  .crash .petit-texte { font-size: 14px; opacity: .8; margin-top: 28px; }
+  .crash.noir { background: #000; }
+  .crash.noir .crash-contenu { display: none; }
+</style>
+</head>
+<body>
+
+<a class="retour" href="index.html">← natx.fun</a>
+
+<main class="scene" id="scene">
+  <p class="message" id="message">N'appuie surtout pas sur ce bouton.</p>
+  <div class="zone" id="zone">
+    <button class="gros" id="bouton" aria-label="Le bouton interdit"></button>
+  </div>
+</main>
+<p class="compteur" id="compteur"></p>
+
+<div class="crash" id="crash" hidden>
+  <div class="crash-contenu">
+    <div class="smiley">:(</div>
+    <p>Ton navigateur a rencontré un problème parce que quelqu'un a appuyé sur le bouton interdit.</p>
+    <p>Nous collectons les preuves de ta culpabilité.</p>
+    <p><span id="pourcent">0</span> % effectué</p>
+    <p class="petit-texte">Code d'arrêt : BOUTON_TROP_APPUYÉ</p>
+  </div>
+</div>
+
+<script>
+const scene = document.getElementById('scene');
+const msg = document.getElementById('message');
+const zone = document.getElementById('zone');
+const bouton = document.getElementById('bouton');
+const compteur = document.getElementById('compteur');
+const crash = document.getElementById('crash');
+
+let etape = 0, appuis = 0, fuite = 0, bloque = false, dernierEsquive = 0, derniere = '', essaimEl = null;
+
+const moqueries = ["Nope.", "Presque !", "Hihi, par ici !", "Trop lent !", "Raté !"];
+const fauxMessages = ["Faux bouton ! 😜", "Raté, celui-là est en plastique.", "Non. Pas lui.", "Encore un faux !", "Ce bouton est un imposteur.", "Tu chauffes… ou pas."];
+const sansFin = [
+  "Il n'y a vraiment plus rien. Promis.",
+  "Ce bouton a une famille, tu sais.",
+  "Tu pourrais faire tes devoirs à la place.",
+  "Le bouton a porté plainte.",
+  "Toujours là ?",
+  "Bip.",
+  "Le bouton fait semblant de dormir. 😴",
+  "Tu sais qu'on peut fermer un onglet ?",
+  "Ta souris demande des vacances.",
+  "Même le bouton s'ennuie.",
+  "Si tu arrives à 1000, il ne se passe rien. Ou peut-être que si.",
+];
+const paliers = {
+  50: "50 appuis ! Le bouton te déclare officiellement têtu.",
+  100: "100 appuis. Ton doigt mérite une médaille. 🥇",
+  250: "250 appuis. Tu es plus têtu qu'une mule.",
+  500: "500 appuis ?! Va boire un verre d'eau.",
+  1000: "1000 appuis. Il ne se passe rien. Je t'avais prévenu. 🙃",
+};
+
+function hasard(liste) { return liste[Math.floor(Math.random() * liste.length)]; }
+
+function dire(texte) {
+  msg.textContent = texte;
+  msg.classList.remove('pop');
+  void msg.offsetWidth;
+  msg.classList.add('pop');
+}
+
+function compter() {
+  appuis++;
+  compteur.textContent = 'Appuis : ' + appuis;
+}
+
+function secouer() {
+  scene.classList.remove('secoue');
+  void scene.offsetWidth;
+  scene.classList.add('secoue');
+}
+
+function taille(px) { bouton.style.setProperty('--taille', px + 'px'); }
+
+bouton.addEventListener('click', () => {
+  if (bloque) return;
+  if (fuite > 0) { esquiver(); return; }
+  avancer();
+});
+
+function avancer() {
+  compter();
+  etape++;
+  switch (etape) {
+    case 1: dire("Hé ! J'ai dit de ne PAS appuyer."); break;
+    case 2: dire("Bon. Je vais faire comme si je n'avais rien vu."); break;
+    case 3: dire("Tu le fais exprès, c'est ça ?"); break;
+    case 4: dire("Arrête. Ce bouton est très fragile."); secouer(); break;
+    case 5: dire("Regarde, il transpire. Tu es content ?"); bouton.classList.add('transpire'); break;
+    case 6: dire("Très bien. Le bouton va se défendre."); bouton.classList.remove('transpire'); fuite = 6; break;
+    case 7: dire("Tu l'as eu. Il est vexé maintenant."); remettreEnPlace(); taille(130); break;
+    case 8: dire("Il rétrécit de honte."); taille(80); break;
+    case 9: dire("Il est minuscule. Tu n'as pas honte ?"); taille(34); break;
+    case 10: dire("D'accord, d'accord. Il reprend des forces."); taille(180); break;
+    case 11: dire("Tu veux du chaos ? Voilà du chaos."); scene.classList.add('envers'); break;
+    case 12: dire("Ça va, la tête en bas ?"); break;
+    case 13: dire("Bon, je remets à l'endroit. Mais il fait nuit maintenant."); scene.classList.remove('envers'); document.body.classList.add('nuit'); break;
+    case 14: dire("Un seul de ces boutons est le vrai. Bonne chance."); essaim(); break;
+    case 15: dire("Bien joué, détective. Le jour se lève."); finEssaim(); document.body.classList.remove('nuit'); break;
+    case 16: dire("Hmm. Le bouton commence à chauffer…"); bouton.classList.add('chaud'); break;
+    case 17: dire("ATTENTION. SURCHAUFFE. NE PLUS APPUYER."); document.body.classList.add('alerte'); break;
+    case 18: planter(); break;
+    case 19: dire("Je vais être honnête : il n'y a rien à la fin."); break;
+    case 20: dire("Vraiment rien."); break;
+    case 21: dire("Bon… il y a peut-être un petit truc. Mais tu ne le mérites pas."); break;
+    case 22: dire("D'accord, tu as gagné. Voici ta récompense :"); recompense(); break;
+    default: dire(phraseSansFin());
+  }
+}
+
+// Le bouton s'enfuit quand la souris approche
+function esquiver() {
+  const maintenant = performance.now();
+  if (maintenant - dernierEsquive < 300) return;
+  dernierEsquive = maintenant;
+  const r = bouton.getBoundingClientRect();
+  if (bouton.style.position !== 'fixed') {
+    bouton.style.left = r.left + 'px';
+    bouton.style.top = r.top + 'px';
+    bouton.style.position = 'fixed';
+    void bouton.offsetWidth;
+  }
+  const x = 16 + Math.random() * Math.max(0, innerWidth - r.width - 32);
+  const y = 70 + Math.random() * Math.max(0, innerHeight - r.height - 120);
+  bouton.style.left = x + 'px';
+  bouton.style.top = y + 'px';
+  fuite--;
+  dire(fuite > 0 ? moqueries[fuite % moqueries.length] : "Bon, ok… je suis fatigué. Vas-y.");
+}
+
+document.addEventListener('pointermove', e => {
+  if (fuite <= 0 || e.pointerType !== 'mouse') return;
+  const r = bouton.getBoundingClientRect();
+  const dx = e.clientX - (r.left + r.width / 2);
+  const dy = e.clientY - (r.top + r.height / 2);
+  if (Math.hypot(dx, dy) < r.width / 2 + 40) esquiver();
+});
+
+function remettreEnPlace() {
+  bouton.style.position = '';
+  bouton.style.left = '';
+  bouton.style.top = '';
+}
+
+// 12 boutons, un seul est le vrai
+function essaim() {
+  bouton.style.display = 'none';
+  essaimEl = document.createElement('div');
+  essaimEl.className = 'essaim';
+  const vrai = Math.floor(Math.random() * 12);
+  for (let i = 0; i < 12; i++) {
+    const b = document.createElement('button');
+    b.className = 'petit';
+    b.setAttribute('aria-label', 'Un bouton');
+    b.addEventListener('click', () => {
+      if (bloque) return;
+      if (i === vrai) { avancer(); return; }
+      compter();
+      b.classList.add('boum');
+      dire(hasard(fauxMessages));
+    });
+    essaimEl.appendChild(b);
+  }
+  zone.appendChild(essaimEl);
+}
+
+function finEssaim() {
+  if (essaimEl) essaimEl.remove();
+  essaimEl = null;
+  bouton.style.display = '';
+}
+
+// Faux écran de plantage
+function planter() {
+  bloque = true;
+  document.body.classList.remove('alerte');
+  bouton.classList.remove('chaud');
+  crash.hidden = false;
+  const pct = document.getElementById('pourcent');
+  let p = 0;
+  const minuteur = setInterval(() => {
+    p = Math.min(100, p + Math.ceil(Math.random() * 9));
+    pct.textContent = p;
+    if (p < 100) return;
+    clearInterval(minuteur);
+    setTimeout(() => {
+      crash.classList.add('noir');
+      setTimeout(() => {
+        crash.hidden = true;
+        crash.classList.remove('noir');
+        pct.textContent = 0;
+        bloque = false;
+        dire("…Il a redémarré. Tu es fier de toi ?");
+      }, 1400);
+    }, 700);
+  }, 160);
+}
+
+function recompense() {
+  const t = document.createElement('div');
+  t.className = 'trophee';
+  t.innerHTML = '<span>🏆</span><small>Trophée officiel de la Désobéissance</small>';
+  scene.insertBefore(t, zone);
+  const couleurs = ['#ff5a36', '#ffd23f', '#3ddc97', '#38bdf8', '#a78bfa', '#ff8fab'];
+  for (let i = 0; i < 120; i++) {
+    const c = document.createElement('i');
+    c.className = 'confetti';
+    c.style.left = Math.random() * 100 + 'vw';
+    c.style.background = hasard(couleurs);
+    c.style.animationDuration = 2 + Math.random() * 2.5 + 's';
+    c.style.animationDelay = Math.random() * .8 + 's';
+    document.body.appendChild(c);
+    setTimeout(() => c.remove(), 6000);
+  }
+}
+
+function phraseSansFin() {
+  if (paliers[appuis]) return paliers[appuis];
+  let p;
+  do { p = hasard(sansFin); } while (p === derniere);
+  derniere = p;
+  return p;
+}
+</script>
+</body>
+</html>
