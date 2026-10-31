@@ -5,126 +5,182 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>natx.fun</title>
 <meta name="description" content="Des petits trucs inutiles mais géniaux à faire sur Internet.">
+<meta property="og:title" content="natx.fun">
+<meta property="og:description" content="9 petits jeux inutiles mais géniaux : bouton interdit, planètes, musique, patates…">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎈</text></svg>">
 <link rel="stylesheet" href="commun.css">
 <style>
-  header { text-align: center; padding: 56px 16px 20px; }
+  /* ---------- En-tête ---------- */
+  header { position: relative; text-align: center; padding: 64px 16px 10px; overflow: hidden; }
   .logo {
-    font-family: var(--titre);
-    font-weight: 700;
-    font-size: clamp(56px, 12vw, 96px);
-    margin: 0;
-    letter-spacing: -2px;
-    line-height: 1;
+    font-family: var(--titre); font-weight: 700; font-size: clamp(64px, 14vw, 120px);
+    margin: 0; letter-spacing: -2px; line-height: 1; display: inline-flex; cursor: default;
   }
-  .logo span { color: #ff5a36; }
-  .slogan { color: var(--gris); font-size: 18px; margin: 12px 0 0; }
+  .logo span { display: inline-block; animation: arrivee .7s cubic-bezier(.3, 1.6, .5, 1) both; animation-delay: calc(var(--i) * 60ms); }
+  .logo:hover span { animation: rebond .6s calc(var(--i) * 45ms); }
+  .logo .point { color: #ff5a36; }
+  @keyframes arrivee { from { transform: translateY(50px) scale(.5); opacity: 0; } }
+  @keyframes rebond { 40% { transform: translateY(-18px) rotate(-6deg); } }
+  .slogan { color: var(--gris); font-size: clamp(17px, 2.4vw, 20px); margin: 14px 0 0; }
+  .slogan b { color: var(--encre); }
+  .haut { margin-top: 24px; display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+  .btn.jaune { background: #ffd23f; font-size: 19px; padding: 12px 24px; }
+  .deco { position: absolute; line-height: 1; pointer-events: none; animation: flotte 6s ease-in-out infinite; }
+  @keyframes flotte { 50% { transform: translateY(-16px) rotate(10deg); } }
 
+  /* ---------- Grille de cartes ---------- */
   .grille {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
-    gap: 30px;
-    max-width: 1080px;
-    margin: 30px auto 64px;
-    padding: 0 16px;
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 32px;
+    max-width: 1120px; margin: 40px auto 70px; padding: 0 16px;
   }
   .carte {
-    display: block;
-    text-decoration: none;
-    background: var(--carte);
-    border: 3px solid var(--encre);
-    border-radius: 22px;
-    overflow: hidden;
-    box-shadow: 0 6px 0 var(--encre);
-    transition: transform .15s, box-shadow .15s;
+    position: relative; display: block; text-decoration: none; color: var(--encre);
+    background: #fff; border: 3px solid var(--encre); border-radius: 24px; overflow: hidden;
+    box-shadow: 0 6px 0 var(--encre); transition: transform .2s ease-out, box-shadow .2s;
   }
-  .carte:hover { transform: translateY(-5px) rotate(-1deg); box-shadow: 0 11px 0 var(--encre); }
-  .carte:nth-child(even):hover { transform: translateY(-5px) rotate(1deg); }
+  .carte:hover, .carte:focus-visible { box-shadow: 0 12px 0 var(--encre); }
+  .carte:focus-visible { outline: 4px solid #ff5a36; outline-offset: 4px; transform: translateY(-6px); }
+  .carte::after {
+    content: ''; position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity .25s;
+    background: radial-gradient(circle at var(--mx, 50%) var(--my, 0%), rgba(255, 255, 255, .5), transparent 45%);
+  }
+  .carte:hover::after { opacity: 1; }
   .vignette {
-    height: 190px;
-    position: relative;
-    border-bottom: 3px solid var(--encre);
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
+    height: 200px; position: relative; border-bottom: 3px solid var(--encre); overflow: hidden;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
   }
-  .infos { padding: 14px 20px 20px; }
-  .infos h2 { font-family: var(--titre); font-weight: 600; font-size: 25px; margin: 0 0 4px; }
-  .infos p { margin: 0; color: var(--gris); font-size: 15.5px; line-height: 1.4; }
+  .infos { padding: 15px 20px 20px; }
+  .infos h2 { font-family: var(--titre); font-weight: 600; font-size: 25px; margin: 0 0 5px; }
+  .infos p { margin: 0; color: var(--gris); font-size: 15.5px; line-height: 1.45; }
+  .nouveau {
+    position: absolute; top: 18px; right: -38px; z-index: 2; transform: rotate(35deg);
+    background: #ff5a36; color: #fff; font-family: var(--titre); font-weight: 700; font-size: 12px; letter-spacing: 1.5px;
+    padding: 4px 44px; border-block: 2px solid var(--encre);
+  }
 
   /* 1. Bouton interdit */
   .v-bouton { background: #ffd23f; gap: 18px; }
-  .etiquette {
-    font-family: var(--titre); font-weight: 700; font-size: 13px; letter-spacing: 2px;
-    background: var(--encre); color: #ffd23f; padding: 4px 10px; border-radius: 6px;
-  }
+  .etiquette { font-family: var(--titre); font-weight: 700; font-size: 13px; letter-spacing: 2px; background: var(--encre); color: #ffd23f; padding: 4px 10px; border-radius: 6px; }
   .mini-bouton {
-    width: 92px; height: 92px; border-radius: 50%;
-    border: 3px solid var(--encre);
+    width: 96px; height: 96px; border-radius: 50%; border: 3px solid var(--encre);
     background: radial-gradient(circle at 35% 30%, #ff8b7b 0, #ef2b2d 45%, #c2181b 100%);
-    box-shadow: 0 9px 0 #7a0d10, 0 11px 0 var(--encre);
-    transition: transform .1s, box-shadow .1s;
+    box-shadow: 0 9px 0 #7a0d10, 0 11px 0 var(--encre); transition: transform .1s, box-shadow .1s;
   }
   .carte:hover .mini-bouton { transform: translateY(6px); box-shadow: 0 3px 0 #7a0d10, 0 5px 0 var(--encre); }
 
-  /* 2. Pouvoirs nuls */
-  .v-pouvoirs { background: #a78bfa; }
-  .heros { font-size: 92px; line-height: 1; transform: translate(-40px, 18px); transition: transform .3s; }
-  .carte:hover .heros { transform: translate(-40px, 6px) rotate(-6deg); }
-  .bulle {
-    position: absolute; top: 22px; right: 18px; max-width: 150px;
-    background: #fff; border: 3px solid var(--encre); border-radius: 16px;
-    padding: 8px 12px; font-family: var(--titre); font-weight: 600; font-size: 15px;
-    transform: rotate(4deg);
+  /* 2. Mini cosmos */
+  .v-cosmos {
+    background: radial-gradient(circle at 25% 20%, rgba(129, 140, 248, .45), transparent 45%),
+                radial-gradient(circle at 85% 85%, rgba(236, 72, 153, .35), transparent 45%), #0b1026;
   }
+  .v-cosmos::before {
+    content: ''; position: absolute; inset: 0; opacity: .6;
+    background-image: radial-gradient(#fff 1px, transparent 1.4px), radial-gradient(#fff .8px, transparent 1.2px);
+    background-size: 37px 41px, 23px 29px; background-position: 0 0, 11px 7px;
+  }
+  .soleil {
+    width: 46px; height: 46px; border-radius: 50%; position: relative; z-index: 1;
+    background: radial-gradient(circle at 40% 40%, #fffbe6, #ffd34d 45%, #ff8a00);
+    box-shadow: 0 0 30px 10px rgba(255, 180, 50, .55);
+  }
+  .orbite { position: absolute; left: 50%; top: 50%; border: 1.5px dashed rgba(255, 255, 255, .28); border-radius: 50%; animation: tourne linear infinite; }
+  .o1 { width: 116px; height: 116px; margin: -58px 0 0 -58px; animation-duration: 6s; }
+  .o2 { width: 210px; height: 210px; margin: -105px 0 0 -105px; animation-duration: 12s; }
+  .carte:hover .orbite { animation-duration: 2s; }
+  .carte:hover .o2 { animation-duration: 4s; }
+  .astre { position: absolute; left: 50%; border-radius: 50%; }
+  .o1 .astre { width: 14px; height: 14px; top: -7px; margin-left: -7px; background: radial-gradient(circle at 35% 35%, #a5f3fc, #0e7490); }
+  .o2 .astre { width: 20px; height: 20px; top: -10px; margin-left: -10px; background: radial-gradient(circle at 35% 35%, #fbcfe8, #be185d); }
+  .o2 .astre::after { content: ''; position: absolute; left: -9px; right: -9px; top: 7px; height: 5px; border: 2px solid rgba(255, 240, 210, .8); border-radius: 50%; }
+  @keyframes tourne { to { transform: rotate(360deg); } }
 
-  /* 3. Pluie d'émojis */
-  .v-emojis { background: #7dd3fc; }
-  .v-emojis span {
-    position: absolute; font-size: 42px; line-height: 1;
-    transform: rotate(var(--r, 0deg));
+  /* 3. Boîte à mélodies */
+  .v-melodie { background: radial-gradient(ellipse at 50% 0%, #3b2f8f, #120f2e 75%); }
+  .mini-grille { display: grid; grid-template-columns: repeat(12, 14px); gap: 4px; }
+  .mini-grille i { width: 14px; height: 14px; border-radius: 4px; background: rgba(255, 255, 255, .1); }
+  .mini-grille i.on { background: var(--c); box-shadow: 0 0 9px var(--c); }
+  .tete {
+    position: absolute; top: 50%; left: 50%; width: 18px; height: 112px; margin: -56px 0 0 -108px;
+    background: rgba(255, 255, 255, .22); border-radius: 6px; animation: balaye 3s steps(12) infinite;
   }
+  @keyframes balaye { to { transform: translateX(216px); } }
+
+  /* 4. Empire de la patate */
+  .v-patate { background: linear-gradient(#bfe8ff 0 58%, #8fd16a 58%); }
+  .grosse-patate { font-size: 104px; line-height: 1; filter: drop-shadow(0 6px 0 rgba(0, 0, 0, .2)); transition: transform .15s; margin-top: 14px; }
+  .carte:hover .grosse-patate { transform: scale(1.1) rotate(-6deg); }
+  .couronne { position: absolute; top: 18px; font-size: 40px; transform: rotate(-12deg); margin-left: 34px; }
+  .plus1 {
+    position: absolute; font-family: var(--titre); font-weight: 700; font-size: 22px; color: #fff;
+    -webkit-text-stroke: 1.5px var(--encre); paint-order: stroke fill; animation: monte 2.4s ease-out infinite;
+  }
+  @keyframes monte { 0% { transform: translateY(20px); opacity: 0; } 20% { opacity: 1; } 100% { transform: translateY(-50px); opacity: 0; } }
+
+  /* 5. Pluie d'émojis */
+  .v-emojis { background: linear-gradient(#bae6fd, #e0f2fe); }
+  .v-emojis span { position: absolute; font-size: 42px; line-height: 1; transform: rotate(var(--r, 0deg)); }
   .carte:hover .v-emojis span { animation: saut .55s var(--d, 0s); }
   @keyframes saut { 40% { translate: 0 -26px; } }
 
-  /* 4. Réflexes */
-  .v-reflexe { background: linear-gradient(135deg, #ef4444 50%, #22c55e 50%); }
-  .eclair { font-size: 84px; line-height: 1; transition: transform .2s; }
-  .carte:hover .eclair { transform: scale(1.15) rotate(-8deg); }
-  .clique {
-    font-family: var(--titre); font-weight: 700; font-size: 20px; letter-spacing: 1px;
-    background: #fff; border: 3px solid var(--encre); border-radius: 10px; padding: 2px 12px; margin-top: 6px;
-  }
-
-  /* 5. Le plus lourd */
-  .v-poids { background: #6ee7b7; justify-content: flex-end; padding-bottom: 26px; }
-  .balance { position: relative; width: 210px; height: 64px; transform: rotate(-9deg); transform-origin: 50% 100%; transition: transform .4s; }
+  /* 6. Le plus lourd */
+  .v-poids { background: #6ee7b7; justify-content: flex-end; padding-bottom: 28px; }
+  .balance { position: relative; width: 210px; height: 64px; transform: rotate(-9deg); transform-origin: 50% 100%; transition: transform .45s cubic-bezier(.3, 1.6, .5, 1); }
   .carte:hover .balance { transform: rotate(9deg); }
   .planche { position: absolute; left: 0; right: 0; bottom: 0; height: 10px; background: var(--encre); border-radius: 6px; }
   .balance span { position: absolute; bottom: 8px; font-size: 48px; line-height: 1; }
   .balance .g { left: 4px; }
   .balance .d { right: 4px; }
   .pivot { width: 0; height: 0; border-left: 22px solid transparent; border-right: 22px solid transparent; border-bottom: 34px solid var(--encre); }
+  .question { position: absolute; top: 18px; font-family: var(--titre); font-weight: 700; font-size: 34px; }
 
-  /* 6. Arbre magique */
+  /* 7. Pouvoirs nuls */
+  .v-pouvoirs { background: #a78bfa; }
+  .heros { font-size: 96px; line-height: 1; transform: translate(-44px, 20px); transition: transform .3s; }
+  .carte:hover .heros { transform: translate(-44px, 6px) rotate(-6deg); }
+  .bulle {
+    position: absolute; top: 22px; right: 18px; max-width: 150px; background: #fff; border: 3px solid var(--encre);
+    border-radius: 16px; padding: 8px 12px; font-family: var(--titre); font-weight: 600; font-size: 15px; transform: rotate(4deg);
+  }
+
+  /* 8. Arbre magique */
   .v-arbre { background: linear-gradient(#fde68a, #fdba74); }
-  .v-arbre svg { position: absolute; bottom: 0; width: 230px; height: auto; }
+  .v-arbre svg { position: absolute; bottom: 0; width: 240px; height: auto; }
   .v-arbre .feuillage { transform-origin: 100px 150px; transition: transform .5s; }
   .carte:hover .v-arbre .feuillage { transform: rotate(3deg); }
+  .feuille { position: absolute; font-size: 20px; animation: tombe 4s linear infinite; }
+  @keyframes tombe { from { transform: translate(0, -20px) rotate(0); opacity: 0; } 15% { opacity: 1; } to { transform: translate(40px, 150px) rotate(300deg); opacity: 0; } }
 
-  footer { text-align: center; color: var(--gris); padding: 0 16px 40px; font-size: 14px; }
+  /* 9. Réflexes */
+  .v-reflexe { background: linear-gradient(135deg, #ef4444 50%, #22c55e 50%); }
+  .eclair { font-size: 86px; line-height: 1; transition: transform .2s; }
+  .carte:hover .eclair { transform: scale(1.15) rotate(-8deg); }
+  .clique { font-family: var(--titre); font-weight: 700; font-size: 20px; letter-spacing: 1px; background: #fff; border: 3px solid var(--encre); border-radius: 10px; padding: 2px 12px; margin-top: 6px; }
+
+  footer { text-align: center; color: var(--gris); padding: 0 16px 44px; font-size: 14.5px; line-height: 1.6; }
+
+  @media (max-width: 760px) { .deco { display: none; } }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+  }
 </style>
 </head>
 <body>
 
 <header>
-  <h1 class="logo">natx<span>.</span>fun</h1>
-  <p class="slogan">Des petits trucs inutiles mais géniaux à faire sur Internet.</p>
+  <span class="deco" style="left:7%;top:58px;font-size:46px">🎈</span>
+  <span class="deco" style="right:9%;top:46px;font-size:40px;animation-delay:-2s">⭐</span>
+  <span class="deco" style="left:15%;top:200px;font-size:34px;animation-delay:-4s">🪐</span>
+  <span class="deco" style="right:15%;top:196px;font-size:36px;animation-delay:-1s">🥔</span>
+  <h1 class="logo" aria-label="natx.fun">
+    <span style="--i:0">n</span><span style="--i:1">a</span><span style="--i:2">t</span><span style="--i:3">x</span><span class="point" style="--i:4">.</span><span style="--i:5">f</span><span style="--i:6">u</span><span style="--i:7">n</span>
+  </h1>
+  <p class="slogan">Des petits trucs <b>inutiles</b> mais <b>géniaux</b> à faire sur Internet.</p>
+  <div class="haut">
+    <button class="btn jaune" id="hasard">🎲 Un jeu au hasard</button>
+  </div>
 </header>
 
-<main class="grille">
+<main class="grille" id="grille">
 
   <a class="carte" href="bouton.html">
     <div class="vignette v-bouton">
@@ -137,14 +193,43 @@
     </div>
   </a>
 
-  <a class="carte" href="pouvoirs.html">
-    <div class="vignette v-pouvoirs">
-      <span class="heros">🦸</span>
-      <span class="bulle">…mais seulement le mardi</span>
+  <a class="carte" href="cosmos.html">
+    <div class="vignette v-cosmos">
+      <span class="nouveau">NOUVEAU</span>
+      <i class="orbite o2"><b class="astre"></b></i>
+      <i class="orbite o1"><b class="astre"></b></i>
+      <i class="soleil"></i>
     </div>
     <div class="infos">
-      <h2>Pouvoirs Nuls</h2>
-      <p>Découvre ton super-pouvoir… et son terrible défaut.</p>
+      <h2>Mini Cosmos</h2>
+      <p>Lance des planètes autour du soleil et crée ton propre système solaire.</p>
+    </div>
+  </a>
+
+  <a class="carte" href="melodie.html">
+    <div class="vignette v-melodie">
+      <span class="nouveau">NOUVEAU</span>
+      <div class="mini-grille" id="mini-grille"></div>
+      <i class="tete"></i>
+    </div>
+    <div class="infos">
+      <h2>Boîte à Mélodies</h2>
+      <p>Compose une musique en cliquant sur des cases. Impossible de faire une fausse note.</p>
+    </div>
+  </a>
+
+  <a class="carte" href="patate.html">
+    <div class="vignette v-patate">
+      <span class="nouveau">NOUVEAU</span>
+      <span class="couronne">👑</span>
+      <span class="grosse-patate">🥔</span>
+      <span class="plus1" style="left:22%;top:70px">+1</span>
+      <span class="plus1" style="right:20%;top:60px;animation-delay:-.8s">+8</span>
+      <span class="plus1" style="left:30%;top:120px;animation-delay:-1.6s">+47</span>
+    </div>
+    <div class="infos">
+      <h2>L'Empire de la Patate</h2>
+      <p>Clique sur une patate. Deviens maître de l'univers. Logique.</p>
     </div>
   </a>
 
@@ -169,30 +254,33 @@
     </div>
   </a>
 
-  <a class="carte" href="reflexe.html">
-    <div class="vignette v-reflexe">
-      <span class="eclair">⚡</span>
-      <span class="clique">CLIQUE !</span>
-    </div>
-    <div class="infos">
-      <h2>Réflexes Éclair</h2>
-      <p>Es-tu plus rapide qu'un pilote de F1… ou qu'un paresseux ?</p>
-    </div>
-  </a>
-
   <a class="carte" href="poids.html">
     <div class="vignette v-poids">
+      <span class="question">?</span>
       <div class="balance"><span class="g">☁️</span><span class="d">🐋</span><i class="planche"></i></div>
       <i class="pivot"></i>
     </div>
     <div class="infos">
       <h2>Le Plus Lourd</h2>
-      <p>Nuage, baleine, tour Eiffel… lequel pèse le plus ?</p>
+      <p>Nuage, baleine, tour Eiffel… lequel pèse le plus ? Tu vas être surpris.</p>
+    </div>
+  </a>
+
+  <a class="carte" href="pouvoirs.html">
+    <div class="vignette v-pouvoirs">
+      <span class="heros">🦸</span>
+      <span class="bulle">…mais seulement le mardi</span>
+    </div>
+    <div class="infos">
+      <h2>Pouvoirs Nuls</h2>
+      <p>Découvre ton super-pouvoir… et son terrible défaut.</p>
     </div>
   </a>
 
   <a class="carte" href="arbre.html">
     <div class="vignette v-arbre">
+      <span class="feuille" style="left:24%;top:30px">🍂</span>
+      <span class="feuille" style="left:62%;top:20px;animation-delay:-2s">🍁</span>
       <svg viewBox="0 0 200 160" aria-hidden="true">
         <ellipse cx="100" cy="176" rx="150" ry="34" fill="#65a30d" />
         <g stroke="#5b3a29" stroke-linecap="round" fill="none">
@@ -221,9 +309,52 @@
     </div>
   </a>
 
+  <a class="carte" href="reflexe.html">
+    <div class="vignette v-reflexe">
+      <span class="eclair">⚡</span>
+      <span class="clique">CLIQUE !</span>
+    </div>
+    <div class="infos">
+      <h2>Réflexes Éclair</h2>
+      <p>Es-tu plus rapide qu'un pilote de F1… ou qu'un paresseux ?</p>
+    </div>
+  </a>
+
 </main>
 
-<footer>Fait par natx · Aucune pub, aucun compte, juste du fun.</footer>
+<footer>
+  Fait maison par natx · 9 jeux, aucune pub, aucun compte, juste du fun.<br>
+  Reviens souvent : de nouveaux jeux arrivent.
+</footer>
 
+<script>
+// Petite grille animée de la carte « Boîte à Mélodies »
+const lignes = ['100010001000', '001000100010', '000100000100', '010000010000', '000001000001', '100100100100'];
+const couleurs = ['#ff5d8f', '#ffd23f', '#3ddc97', '#38bdf8', '#818cf8', '#e2e8f0'];
+const mg = document.getElementById('mini-grille');
+lignes.forEach((l, r) => [...l].forEach(b => {
+  const i = document.createElement('i');
+  if (b === '1') { i.className = 'on'; i.style.setProperty('--c', couleurs[r]); }
+  mg.appendChild(i);
+}));
+
+// Les cartes penchent vers la souris
+document.querySelectorAll('.carte').forEach(c => {
+  c.addEventListener('pointermove', e => {
+    if (e.pointerType !== 'mouse') return;
+    const r = c.getBoundingClientRect();
+    const x = (e.clientX - r.left) / r.width, y = (e.clientY - r.top) / r.height;
+    c.style.transform = `perspective(800px) rotateX(${(.5 - y) * 8}deg) rotateY(${(x - .5) * 10}deg) translateY(-6px)`;
+    c.style.setProperty('--mx', x * 100 + '%');
+    c.style.setProperty('--my', y * 100 + '%');
+  });
+  c.addEventListener('pointerleave', () => c.style.transform = '');
+});
+
+document.getElementById('hasard').addEventListener('click', () => {
+  const cartes = document.querySelectorAll('.carte');
+  location.href = cartes[Math.floor(Math.random() * cartes.length)].href;
+});
+</script>
 </body>
 </html>

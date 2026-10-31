@@ -1,0 +1,288 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Boîte à Mélodies · natx.fun</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎹</text></svg>">
+<link rel="stylesheet" href="commun.css">
+<style>
+  body { background: radial-gradient(ellipse at 50% -10%, #3b2f8f, #120f2e 60%, #0a0820); color: #f4f1ff; min-height: 100vh; }
+  .page { max-width: 960px; margin: 0 auto; padding: 72px 16px 40px; text-align: center; }
+  h1 { font-family: var(--titre); font-weight: 700; font-size: clamp(34px, 6vw, 52px); margin: 0; }
+  .sous { color: #bdb6ea; font-size: 17px; margin: 8px 0 24px; }
+  .grille {
+    display: grid; grid-template-columns: repeat(16, 1fr); gap: clamp(3px, .7vw, 6px);
+    max-width: max(320px, calc((100vh - 330px) * 1.45)); margin: 0 auto;
+    padding: clamp(8px, 2vw, 16px); background: rgba(255, 255, 255, .04);
+    border: 2px solid rgba(255, 255, 255, .12); border-radius: 22px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, .35); touch-action: none; user-select: none;
+  }
+  .case {
+    aspect-ratio: 1; border-radius: 22%; background: rgba(255, 255, 255, .07); cursor: pointer;
+    transition: background .15s, transform .15s, box-shadow .25s, filter .15s;
+  }
+  .case.temps { background: rgba(255, 255, 255, .12); }
+  .case.batterie { border-radius: 50%; }
+  .case.on { background: var(--c); box-shadow: 0 0 14px -2px var(--c); }
+  .case.col:not(.on) { background: rgba(255, 255, 255, .22); }
+  .case.on.col { transform: scale(1.2); box-shadow: 0 0 26px 2px var(--c); filter: brightness(1.3); }
+  .sep { grid-column: 1 / -1; height: clamp(4px, 1vw, 10px); }
+  .commandes { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; align-items: center; margin-top: 18px; }
+  .btn.actif { background: #ffd23f; }
+  .lecture { font-size: 22px; padding: 12px 28px; background: #3ddc97; min-width: 170px; }
+  .tempo { display: flex; align-items: center; gap: 10px; font-weight: 700; background: rgba(255, 255, 255, .08); padding: 10px 16px; border-radius: 14px; }
+  .tempo input { accent-color: #ffd23f; width: 150px; }
+  .tempo span { min-width: 2.4em; font-family: var(--titre); }
+  .instruments { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+  .astuce { color: #9d97c9; font-size: 14px; margin-top: 24px; }
+</style>
+</head>
+<body>
+
+<a class="retour" href="index.html">← natx.fun</a>
+
+<main class="page">
+  <h1>Boîte à Mélodies</h1>
+  <p class="sous">Clique sur les cases pour composer. Tout sonne bien, promis.</p>
+  <div class="grille" id="grille"></div>
+  <div class="commandes">
+    <button class="btn lecture" id="lecture">▶ Lecture</button>
+    <label class="tempo">Tempo <input type="range" id="tempo" min="70" max="170" value="112"> <span id="bpm">112</span></label>
+  </div>
+  <div class="commandes">
+    <div class="instruments" id="instruments">
+      <button class="btn actif" data-i="doux">🎐 Doux</button>
+      <button class="btn" data-i="retro">👾 Rétro</button>
+      <button class="btn" data-i="cloche">🔔 Cloche</button>
+    </div>
+    <button class="btn" id="hasard">🎲 Hasard</button>
+    <button class="btn" id="effacer">🧹 Effacer</button>
+    <button class="btn" id="partager">🔗 Partager</button>
+  </div>
+  <p class="astuce">Les ronds du bas = la batterie. Barre d'espace = lecture / pause. « Partager » copie un lien vers ta musique.</p>
+</main>
+
+<script>
+// Gamme pentatonique : impossible de faire une fausse note
+const NOTES = [659.25, 587.33, 523.25, 440, 392, 329.63, 293.66, 261.63];
+const COULEURS = ['#ff5d8f', '#ff8a4c', '#ffd23f', '#9be15d', '#3ddc97', '#38bdf8', '#818cf8', '#c084fc'];
+const COULEURS_BATTERIE = ['#f1f5f9', '#cbd5e1', '#94a3b8'];
+const PAS = 16, LIGNES = NOTES.length + 3;
+const INSTRUMENTS = {
+  doux: { type: 'sine', duree: .55, vol: .35 },
+  retro: { type: 'square', duree: .2, vol: .1 },
+  cloche: { type: 'triangle', duree: 1.5, vol: .32 },
+};
+const DEMO = [[2, 0], [3, 3], [4, 6], [0, 8], [1, 10], [2, 11], [3, 14], [7, 0], [5, 8],
+  [8, 0], [8, 2], [8, 4], [8, 6], [8, 8], [8, 10], [8, 12], [8, 14], [9, 4], [9, 12], [10, 0], [10, 8], [10, 10]];
+
+let motif = Array.from({ length: LIGNES }, () => Array(PAS).fill(false));
+let bpm = 112, instrument = 'doux';
+const grille = document.getElementById('grille');
+const cellules = [];
+
+for (let r = 0; r < LIGNES; r++) {
+  if (r === NOTES.length) grille.appendChild(Object.assign(document.createElement('div'), { className: 'sep' }));
+  cellules[r] = [];
+  for (let s = 0; s < PAS; s++) {
+    const c = document.createElement('div');
+    c.className = 'case' + (s % 4 === 0 ? ' temps' : '') + (r >= NOTES.length ? ' batterie' : '');
+    c.dataset.r = r; c.dataset.s = s;
+    c.style.setProperty('--c', r < NOTES.length ? COULEURS[r] : COULEURS_BATTERIE[r - NOTES.length]);
+    grille.appendChild(c);
+    cellules[r][s] = c;
+  }
+}
+
+function afficherMotif() {
+  for (let r = 0; r < LIGNES; r++) for (let s = 0; s < PAS; s++) cellules[r][s].classList.toggle('on', motif[r][s]);
+}
+
+/* ---------- Son ---------- */
+let ctx, maitre, echo, bruit;
+function audio() {
+  if (ctx) { if (ctx.state === 'suspended') ctx.resume(); return; }
+  ctx = new (window.AudioContext || window.webkitAudioContext)();
+  const comp = ctx.createDynamicsCompressor();
+  comp.connect(ctx.destination);
+  maitre = ctx.createGain(); maitre.gain.value = .5; maitre.connect(comp);
+  // Petit écho pour un son plus joli
+  echo = ctx.createDelay(1); echo.delayTime.value = .27;
+  const retour = ctx.createGain(); retour.gain.value = .3;
+  const mix = ctx.createGain(); mix.gain.value = .22;
+  echo.connect(retour); retour.connect(echo); echo.connect(mix); mix.connect(comp);
+  bruit = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
+  const d = bruit.getChannelData(0);
+  for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+}
+
+function note(f, t) {
+  const i = INSTRUMENTS[instrument];
+  const o = ctx.createOscillator(), g = ctx.createGain();
+  o.type = i.type; o.frequency.value = f;
+  g.gain.setValueAtTime(0, t);
+  g.gain.linearRampToValueAtTime(i.vol, t + .008);
+  g.gain.exponentialRampToValueAtTime(.0001, t + i.duree);
+  o.connect(g); g.connect(maitre); g.connect(echo);
+  o.start(t); o.stop(t + i.duree + .05);
+}
+
+function bruitFiltre(t, type, freq, vol, duree) {
+  const s = ctx.createBufferSource(), f = ctx.createBiquadFilter(), g = ctx.createGain();
+  s.buffer = bruit; f.type = type; f.frequency.value = freq;
+  g.gain.setValueAtTime(vol, t);
+  g.gain.exponentialRampToValueAtTime(.001, t + duree);
+  s.connect(f); f.connect(g); g.connect(maitre);
+  s.start(t); s.stop(t + duree + .02);
+}
+
+function charleston(t) { bruitFiltre(t, 'highpass', 7000, .25, .05); }
+function caisseClaire(t) {
+  bruitFiltre(t, 'highpass', 1200, .5, .18);
+  const o = ctx.createOscillator(), g = ctx.createGain();
+  o.type = 'triangle'; o.frequency.value = 190;
+  g.gain.setValueAtTime(.4, t); g.gain.exponentialRampToValueAtTime(.001, t + .1);
+  o.connect(g); g.connect(maitre); o.start(t); o.stop(t + .12);
+}
+function grosseCaisse(t) {
+  const o = ctx.createOscillator(), g = ctx.createGain();
+  o.frequency.setValueAtTime(150, t); o.frequency.exponentialRampToValueAtTime(40, t + .15);
+  g.gain.setValueAtTime(.9, t); g.gain.exponentialRampToValueAtTime(.001, t + .35);
+  o.connect(g); g.connect(maitre); o.start(t); o.stop(t + .4);
+}
+function jouerLigne(r, t) {
+  if (r < NOTES.length) note(NOTES[r], t);
+  else [charleston, caisseClaire, grosseCaisse][r - NOTES.length](t);
+}
+
+/* ---------- Lecture (le son est programmé un peu à l'avance pour ne jamais être en retard) ---------- */
+let enLecture = false, pasActuel = 0, prochain = 0, minuteur = null, file = [], colonne = -1;
+const boutonLecture = document.getElementById('lecture');
+
+function planifier() {
+  while (prochain < ctx.currentTime + .12) {
+    for (let r = 0; r < LIGNES; r++) if (motif[r][pasActuel]) jouerLigne(r, prochain);
+    file.push([pasActuel, prochain]);
+    pasActuel = (pasActuel + 1) % PAS;
+    prochain += 60 / bpm / 4;
+  }
+}
+
+function montrerColonne(s) {
+  if (colonne >= 0) for (let r = 0; r < LIGNES; r++) cellules[r][colonne].classList.remove('col');
+  colonne = s;
+  if (s >= 0) for (let r = 0; r < LIGNES; r++) cellules[r][s].classList.add('col');
+}
+
+function visuel() {
+  if (!enLecture) return;
+  while (file.length && file[0][1] <= ctx.currentTime) montrerColonne(file.shift()[0]);
+  requestAnimationFrame(visuel);
+}
+
+function lecture() {
+  audio();
+  enLecture = true; pasActuel = 0; prochain = ctx.currentTime + .05; file = [];
+  planifier();
+  minuteur = setInterval(planifier, 25);
+  boutonLecture.textContent = '⏸ Pause';
+  requestAnimationFrame(visuel);
+}
+
+function pause() {
+  enLecture = false;
+  clearInterval(minuteur);
+  file = [];
+  montrerColonne(-1);
+  boutonLecture.textContent = '▶ Lecture';
+}
+
+boutonLecture.addEventListener('click', () => enLecture ? pause() : lecture());
+addEventListener('keydown', e => {
+  if (e.code !== 'Space' || e.target.tagName === 'BUTTON') return;
+  e.preventDefault();
+  enLecture ? pause() : lecture();
+});
+
+/* ---------- Dessiner sur la grille (clic ou glisser) ---------- */
+let peinture = null;
+function basculer(c, val) {
+  const r = +c.dataset.r, s = +c.dataset.s;
+  motif[r][s] = val;
+  c.classList.toggle('on', val);
+  if (val && !enLecture) jouerLigne(r, ctx.currentTime);
+}
+grille.addEventListener('pointerdown', e => {
+  const c = e.target.closest('.case');
+  if (!c) return;
+  audio();
+  peinture = !motif[c.dataset.r][c.dataset.s];
+  basculer(c, peinture);
+  grille.setPointerCapture(e.pointerId);
+});
+grille.addEventListener('pointermove', e => {
+  if (peinture === null) return;
+  const el = document.elementFromPoint(e.clientX, e.clientY);
+  const c = el && el.closest('.case');
+  if (c && motif[c.dataset.r][c.dataset.s] !== peinture) basculer(c, peinture);
+});
+addEventListener('pointerup', () => peinture = null);
+addEventListener('pointercancel', () => peinture = null);
+
+/* ---------- Boutons ---------- */
+const tempo = document.getElementById('tempo');
+tempo.addEventListener('input', () => { bpm = +tempo.value; document.getElementById('bpm').textContent = bpm; });
+
+function choisirInstrument(nom) {
+  instrument = nom;
+  document.querySelectorAll('#instruments .btn').forEach(b => b.classList.toggle('actif', b.dataset.i === nom));
+}
+document.querySelectorAll('#instruments .btn').forEach(b => b.addEventListener('click', () => choisirInstrument(b.dataset.i)));
+
+document.getElementById('effacer').addEventListener('click', () => {
+  motif = motif.map(l => l.map(() => false));
+  afficherMotif();
+});
+
+document.getElementById('hasard').addEventListener('click', () => {
+  motif = motif.map(l => l.map(() => false));
+  for (let s = 0; s < PAS; s++) {
+    if (Math.random() < .5) motif[Math.floor(Math.random() * 5)][s] = true;
+    if (s % 4 === 0 && Math.random() < .6) motif[5 + Math.floor(Math.random() * 3)][s] = true;
+    if (s % 2 === 0) motif[8][s] = true;
+  }
+  [4, 12].forEach(s => motif[9][s] = true);
+  [0, 8, Math.random() < .5 ? 10 : 6].forEach(s => motif[10][s] = true);
+  afficherMotif();
+});
+
+// Le lien de partage contient toute la musique (1 ligne = 4 caractères)
+function encoder() {
+  return motif.map(l => parseInt(l.map(b => b ? 1 : 0).join(''), 2).toString(16).padStart(4, '0')).join('') + '-' + bpm + '-' + instrument;
+}
+function decoder(h) {
+  const [g, b, i] = h.split('-');
+  if (!g || g.length !== LIGNES * 4 || /[^0-9a-f]/.test(g)) return false;
+  for (let r = 0; r < LIGNES; r++) {
+    const n = parseInt(g.substr(r * 4, 4), 16);
+    for (let s = 0; s < PAS; s++) motif[r][s] = !!(n & (1 << (15 - s)));
+  }
+  if (+b >= 70 && +b <= 170) { bpm = +b; tempo.value = bpm; document.getElementById('bpm').textContent = bpm; }
+  if (INSTRUMENTS[i]) choisirInstrument(i);
+  return true;
+}
+
+document.getElementById('partager').addEventListener('click', async e => {
+  const b = e.currentTarget;
+  history.replaceState(null, '', '#' + encoder());
+  try { await navigator.clipboard.writeText(location.href); b.textContent = '✅ Lien copié !'; }
+  catch { b.textContent = '🔗 Lien dans la barre d\'adresse'; }
+  setTimeout(() => b.textContent = '🔗 Partager', 2000);
+});
+
+if (!decoder(location.hash.slice(1))) DEMO.forEach(([r, s]) => motif[r][s] = true);
+afficherMotif();
+</script>
+</body>
+</html>

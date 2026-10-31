@@ -13,7 +13,9 @@
 * { box-sizing: border-box; }
 html, body { margin: 0; }
 body {
-  background: var(--fond);
+  background-color: var(--fond);
+  background-image: radial-gradient(rgba(31, 29, 43, .08) 1.2px, transparent 1.3px);
+  background-size: 22px 22px;
   color: var(--encre);
   font-family: var(--texte);
   -webkit-font-smoothing: antialiased;

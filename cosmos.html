@@ -1,0 +1,338 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mini Cosmos · natx.fun</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🪐</text></svg>">
+<link rel="stylesheet" href="commun.css">
+<style>
+  html, body { height: 100%; overflow: hidden; }
+  body {
+    background:
+      radial-gradient(ellipse at 18% 12%, rgba(99, 102, 241, .3), transparent 50%),
+      radial-gradient(ellipse at 85% 85%, rgba(236, 72, 153, .22), transparent 50%),
+      #060818;
+    color: #fff; touch-action: none; user-select: none;
+  }
+  canvas { position: fixed; inset: 0; width: 100%; height: 100%; cursor: crosshair; }
+  .astuce {
+    position: fixed; top: 18px; left: 0; right: 0; margin: 0; padding: 0 140px; text-align: center;
+    font-family: var(--titre); font-weight: 600; font-size: clamp(15px, 2.6vw, 20px); pointer-events: none;
+    text-shadow: 0 2px 8px #000; transition: opacity .6s;
+  }
+  .stats {
+    position: fixed; top: 60px; left: 0; right: 0; text-align: center; margin: 0; padding: 0 16px;
+    font-weight: 700; font-size: 15px; color: #c7c9ff; pointer-events: none;
+  }
+  .annonce {
+    position: fixed; left: 50%; bottom: 96px; transform: translateX(-50%);
+    background: rgba(255, 255, 255, .12); backdrop-filter: blur(6px); border: 1px solid rgba(255, 255, 255, .25);
+    padding: 8px 16px; border-radius: 999px; font-weight: 700; white-space: nowrap; pointer-events: none;
+    opacity: 0; transition: opacity .3s;
+  }
+  .annonce.visible { opacity: 1; }
+  .barre {
+    position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%);
+    width: max-content; max-width: calc(100% - 24px);
+    display: flex; flex-wrap: wrap; gap: 8px; justify-content: center;
+    background: rgba(255, 255, 255, .1); backdrop-filter: blur(8px);
+    border: 2px solid rgba(255, 255, 255, .25); border-radius: 20px; padding: 10px 12px;
+  }
+  .barre .btn { font-size: 15px; padding: 7px 12px; }
+  .barre .btn.actif { background: #ffd23f; }
+  @media (max-width: 640px) {
+    .astuce { padding: 0 16px; top: 62px; }
+    .stats { top: 112px; }
+    .annonce { bottom: 150px; }
+  }
+</style>
+</head>
+<body>
+
+<a class="retour" href="index.html">← natx.fun</a>
+<canvas id="toile"></canvas>
+<p class="astuce" id="astuce">Clique = orbite parfaite · Tire = lancer à la main</p>
+<p class="stats" id="stats"></p>
+<div class="annonce" id="annonce"></div>
+<nav class="barre">
+  <button class="btn" id="hasard">🎲 Au hasard</button>
+  <button class="btn" id="double">☀️☀️ Double soleil</button>
+  <button class="btn actif" id="trainees">✨ Traînées</button>
+  <button class="btn" id="effacer">🧹 Effacer</button>
+</nav>
+
+<script>
+const GM = 9e6;
+const NOMS = ['Patatoïde', 'Zorblax', 'Bidulon', 'Croquette-7', 'Glouglou', 'Mimosa', 'Pixelia', 'Tartiflette', 'Zoggy', 'Brocolune', 'Nébulix', 'Kiwi-B', 'Saturnin', 'Gromf', 'Lumina', 'Pouet-3', 'Bubulle', 'Vortexa'];
+const TEINTES = [['#a5f3fc', '#0e7490'], ['#fecaca', '#b91c1c'], ['#fde68a', '#b45309'], ['#bbf7d0', '#15803d'], ['#ddd6fe', '#6d28d9'], ['#fbcfe8', '#be185d'], ['#fed7aa', '#c2410c'], ['#bfdbfe', '#1d4ed8']];
+
+const toile = document.getElementById('toile');
+const ctx = toile.getContext('2d');
+let W, H, dpr, cx, cy;
+let planetes = [], debris = [], temps = 0, doubleSoleil = false, trainees = true, visee = null;
+let record = 0;
+try { record = Number(localStorage.getItem('natx-cosmos-record')) || 0; } catch {}
+const etoiles = Array.from({ length: 240 }, () => ({ x: Math.random(), y: Math.random(), r: .3 + Math.random() * 1.2, p: Math.random() * 6.3, v: .5 + Math.random() * 2 }));
+
+function hasard(l) { return l[Math.floor(Math.random() * l.length)]; }
+
+function redimensionner() {
+  dpr = Math.min(2, window.devicePixelRatio || 1);
+  W = innerWidth; H = innerHeight;
+  toile.width = W * dpr; toile.height = H * dpr;
+  cx = W / 2; cy = H / 2;
+}
+addEventListener('resize', redimensionner);
+redimensionner();
+
+// Un soleil au centre, ou deux soleils qui tournent l'un autour de l'autre
+function soleils(t) {
+  if (!doubleSoleil) return [{ x: 0, y: 0, gm: GM, r: 26 }];
+  const w = 2.2, d = 58, c = Math.cos(w * t) * d, s = Math.sin(w * t) * d;
+  return [{ x: c, y: s, gm: GM / 2, r: 18 }, { x: -c, y: -s, gm: GM / 2, r: 18 }];
+}
+
+function acceleration(x, y, ss) {
+  let ax = 0, ay = 0;
+  for (const s of ss) {
+    const dx = s.x - x, dy = s.y - y, r2 = dx * dx + dy * dy + 80, f = s.gm / (r2 * Math.sqrt(r2));
+    ax += dx * f; ay += dy * f;
+  }
+  return [ax, ay];
+}
+
+function vitesseCirculaire(x, y) {
+  const r = Math.hypot(x, y), v = Math.sqrt(GM / r);
+  return [-y / r * v, x / r * v];
+}
+
+let minuteurAnnonce;
+function annonce(texte) {
+  const el = document.getElementById('annonce');
+  el.textContent = texte;
+  el.classList.add('visible');
+  clearTimeout(minuteurAnnonce);
+  minuteurAnnonce = setTimeout(() => el.classList.remove('visible'), 2200);
+}
+
+function creer(x, y, vx, vy, silencieux) {
+  const r = 5 + Math.random() * 8;
+  const [c1, c2] = hasard(TEINTES);
+  const p = { x, y, vx, vy, r, c1, c2, anneau: r > 9 && Math.random() < .45, incl: (Math.random() - .5) * .8, nom: hasard(NOMS), trace: [], cumul: 0, aPrec: Math.atan2(y, x), tours: 0 };
+  planetes.push(p);
+  if (planetes.length > 30) planetes.shift();
+  if (!silencieux) annonce(`🪐 ${p.nom} est lancée !`);
+}
+
+function explosion(p) {
+  for (let i = 0; i < 26; i++) {
+    const a = Math.random() * 6.3, v = 40 + Math.random() * 140;
+    debris.push({ x: p.x, y: p.y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, vie: 1, c: Math.random() < .5 ? p.c1 : '#ffd34d' });
+  }
+}
+
+function physique(dt) {
+  const n = 8, h = dt / n;
+  for (let k = 0; k < n; k++) {
+    temps += h;
+    const ss = soleils(temps);
+    for (const p of planetes) {
+      const [ax, ay] = acceleration(p.x, p.y, ss);
+      p.vx += ax * h; p.vy += ay * h;
+      p.x += p.vx * h; p.y += p.vy * h;
+      for (const s of ss) if (Math.hypot(p.x - s.x, p.y - s.y) < s.r + p.r * .5) p.mort = 'soleil';
+    }
+  }
+  for (const p of planetes) {
+    if (Math.hypot(p.x, p.y) > Math.max(W, H) * 2.5) p.mort = 'loin';
+    // On compte les tours autour du centre
+    const a = Math.atan2(p.y, p.x);
+    let da = a - p.aPrec;
+    if (da > Math.PI) da -= 2 * Math.PI;
+    if (da < -Math.PI) da += 2 * Math.PI;
+    p.cumul += da; p.aPrec = a;
+    const t = Math.floor(Math.abs(p.cumul) / (2 * Math.PI));
+    if (t > p.tours) {
+      p.tours = t;
+      if (t > record) {
+        record = t;
+        try { localStorage.setItem('natx-cosmos-record', record); } catch {}
+      }
+    }
+    p.trace.push(p.x, p.y);
+    if (p.trace.length > 300) p.trace.splice(0, 2);
+  }
+  for (const p of planetes) {
+    if (p.mort === 'soleil') { explosion(p); annonce(`☀️ Miam ! Le soleil a mangé ${p.nom}.`); }
+    else if (p.mort === 'loin') annonce(`👋 ${p.nom} part explorer l'univers.`);
+  }
+  planetes = planetes.filter(p => !p.mort);
+  for (const d of debris) { d.x += d.vx * dt; d.y += d.vy * dt; d.vie -= dt * 1.2; }
+  debris = debris.filter(d => d.vie > 0);
+}
+
+function dessinerSoleil(s, t) {
+  const R = s.r * (1 + .04 * Math.sin(t * 3));
+  let g = ctx.createRadialGradient(s.x, s.y, R * .5, s.x, s.y, R * 4.5);
+  g.addColorStop(0, 'rgba(255,190,80,.55)');
+  g.addColorStop(1, 'rgba(255,120,40,0)');
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.arc(s.x, s.y, R * 4.5, 0, 6.283); ctx.fill();
+  g = ctx.createRadialGradient(s.x - R * .3, s.y - R * .3, R * .1, s.x, s.y, R);
+  g.addColorStop(0, '#fffbe6'); g.addColorStop(.5, '#ffd34d'); g.addColorStop(1, '#ff8a00');
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.arc(s.x, s.y, R, 0, 6.283); ctx.fill();
+}
+
+function dessinerPlanete(p, ss) {
+  // Le côté éclairé regarde le soleil
+  const s = ss[0], dx = s.x - p.x, dy = s.y - p.y, d = Math.hypot(dx, dy) || 1;
+  const lx = p.x + dx / d * p.r * .5, ly = p.y + dy / d * p.r * .5;
+  ctx.lineWidth = 2.5;
+  ctx.strokeStyle = 'rgba(255,240,210,.7)';
+  if (p.anneau) { ctx.beginPath(); ctx.ellipse(p.x, p.y, p.r * 2, p.r * .55, p.incl, Math.PI, 2 * Math.PI); ctx.stroke(); }
+  const g = ctx.createRadialGradient(lx, ly, p.r * .1, p.x, p.y, p.r * 1.15);
+  g.addColorStop(0, p.c1); g.addColorStop(1, p.c2);
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, 6.283); ctx.fill();
+  if (p.anneau) { ctx.beginPath(); ctx.ellipse(p.x, p.y, p.r * 2, p.r * .55, p.incl, 0, Math.PI); ctx.stroke(); }
+}
+
+function dessinerVisee() {
+  const { x0, y0, x1, y1 } = visee;
+  const dx = x1 - x0, dy = y1 - y0, glisse = Math.hypot(dx, dy) >= 8;
+  let [vx, vy] = glisse ? [dx * 1.6, dy * 1.6] : vitesseCirculaire(x0, y0);
+  // Trajectoire prévue en pointillés
+  ctx.setLineDash([3, 6]);
+  ctx.strokeStyle = 'rgba(255,255,255,.55)';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  let x = x0, y = y0, t = temps;
+  const h = 1 / 120;
+  ctx.moveTo(x, y);
+  for (let i = 0; i < 700; i++) {
+    t += h;
+    const [ax, ay] = acceleration(x, y, soleils(t));
+    vx += ax * h; vy += ay * h; x += vx * h; y += vy * h;
+    if (i % 2 === 0) ctx.lineTo(x, y);
+    if (Math.hypot(x, y) < 22) break;
+  }
+  ctx.stroke();
+  ctx.setLineDash([]);
+  if (glisse) {
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+  }
+  ctx.fillStyle = 'rgba(255,255,255,.85)';
+  ctx.beginPath(); ctx.arc(x0, y0, 8, 0, 6.283); ctx.fill();
+}
+
+function dessiner(t) {
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = '#fff';
+  for (const e of etoiles) {
+    ctx.globalAlpha = .3 + .7 * Math.abs(Math.sin(t * e.v * .5 + e.p));
+    ctx.beginPath(); ctx.arc(e.x * W, e.y * H, e.r, 0, 6.283); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+  ctx.setTransform(dpr, 0, 0, dpr, cx * dpr, cy * dpr);
+
+  if (trainees) {
+    ctx.lineWidth = 2;
+    for (const p of planetes) {
+      const tr = p.trace, n = tr.length / 2;
+      if (n < 2) continue;
+      ctx.strokeStyle = p.c1;
+      // La traînée s'efface vers l'arrière (5 morceaux de plus en plus visibles)
+      for (let k = 0; k < 5; k++) {
+        const a = Math.floor(k * (n - 1) / 5), b = Math.floor((k + 1) * (n - 1) / 5);
+        ctx.globalAlpha = .06 + .5 * (k + 1) / 5;
+        ctx.beginPath();
+        ctx.moveTo(tr[a * 2], tr[a * 2 + 1]);
+        for (let i = a + 1; i <= b; i++) ctx.lineTo(tr[i * 2], tr[i * 2 + 1]);
+        ctx.stroke();
+      }
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  const ss = soleils(temps);
+  for (const s of ss) dessinerSoleil(s, t);
+  for (const p of planetes) dessinerPlanete(p, ss);
+  for (const d of debris) {
+    ctx.globalAlpha = Math.max(0, d.vie);
+    ctx.fillStyle = d.c;
+    ctx.beginPath(); ctx.arc(d.x, d.y, 2.5, 0, 6.283); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+  if (visee) dessinerVisee();
+}
+
+let avant = performance.now(), image = 0;
+function boucle(maintenant) {
+  const dt = Math.min(1 / 30, (maintenant - avant) / 1000);
+  avant = maintenant;
+  physique(dt);
+  dessiner(maintenant / 1000);
+  if (++image % 15 === 0) {
+    const n = planetes.length;
+    const doyenne = planetes.reduce((m, p) => (!m || p.tours > m.tours ? p : m), null);
+    document.getElementById('stats').textContent =
+      `🪐 ${n} planète${n > 1 ? 's' : ''}` +
+      (doyenne && doyenne.tours ? ` · 🔁 ${doyenne.nom} : ${doyenne.tours} tour${doyenne.tours > 1 ? 's' : ''}` : '') +
+      ` · 🏆 Record : ${record} tour${record > 1 ? 's' : ''}`;
+  }
+  requestAnimationFrame(boucle);
+}
+requestAnimationFrame(boucle);
+
+toile.addEventListener('pointerdown', e => {
+  const x = e.clientX - cx, y = e.clientY - cy;
+  visee = { x0: x, y0: y, x1: x, y1: y };
+  toile.setPointerCapture(e.pointerId);
+  document.getElementById('astuce').style.opacity = .35;
+});
+toile.addEventListener('pointermove', e => {
+  if (visee) { visee.x1 = e.clientX - cx; visee.y1 = e.clientY - cy; }
+});
+toile.addEventListener('pointerup', () => {
+  if (!visee) return;
+  const { x0, y0, x1, y1 } = visee;
+  visee = null;
+  if (soleils(temps).some(s => Math.hypot(x0 - s.x, y0 - s.y) < s.r + 18)) return annonce('🔥 Trop près du soleil !');
+  const dx = x1 - x0, dy = y1 - y0;
+  if (Math.hypot(dx, dy) < 8) creer(x0, y0, ...vitesseCirculaire(x0, y0));
+  else creer(x0, y0, dx * 1.6, dy * 1.6);
+});
+toile.addEventListener('pointercancel', () => visee = null);
+
+function systemeAuHasard() {
+  planetes = [];
+  const max = Math.min(W, H) * .44, min = doubleSoleil ? 150 : 80;
+  for (let i = 0; i < 5; i++) {
+    const r = min + (max - min) * (i + Math.random() * .6) / 5, a = Math.random() * 6.3;
+    const x = Math.cos(a) * r, y = Math.sin(a) * r;
+    const [vx, vy] = vitesseCirculaire(x, y), f = .95 + Math.random() * .08;
+    creer(x, y, vx * f, vy * f, true);
+  }
+  annonce('🎲 Nouveau système solaire !');
+}
+
+document.getElementById('hasard').addEventListener('click', systemeAuHasard);
+document.getElementById('double').addEventListener('click', e => {
+  doubleSoleil = !doubleSoleil;
+  e.currentTarget.classList.toggle('actif', doubleSoleil);
+  annonce(doubleSoleil ? '☀️☀️ Deux soleils ! Les orbites deviennent folles.' : '☀️ Retour à un seul soleil.');
+});
+document.getElementById('trainees').addEventListener('click', e => {
+  trainees = !trainees;
+  e.currentTarget.classList.toggle('actif', trainees);
+});
+document.getElementById('effacer').addEventListener('click', () => { planetes = []; debris = []; });
+
+systemeAuHasard();
+</script>
+</body>
+</html>

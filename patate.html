@@ -1,0 +1,357 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>L'Empire de la Patate · natx.fun</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🥔</text></svg>">
+<link rel="stylesheet" href="commun.css">
+<style>
+  body { background: #fff4df; background-image: radial-gradient(rgba(120, 72, 20, .09) 1.5px, transparent 1.6px); background-size: 24px 24px; }
+  .jeu {
+    max-width: 1100px; margin: 0 auto; padding: 70px 16px 40px;
+    display: grid; grid-template-columns: minmax(300px, 1fr) minmax(320px, 440px); gap: 28px; align-items: start;
+  }
+  .champ {
+    position: sticky; top: 70px; text-align: center; overflow: hidden;
+    background: linear-gradient(#bfe8ff, #e9f7ff 56%, #8fd16a 56%, #6fbf4b);
+    border: 3px solid var(--encre); border-radius: 26px; box-shadow: 0 7px 0 var(--encre); padding: 24px 16px 20px;
+  }
+  .titre-jeu { font-family: var(--titre); font-weight: 600; font-size: 18px; margin: 0 0 6px; color: #3f5f7a; }
+  .total { font-family: var(--titre); font-weight: 700; font-size: clamp(30px, 5vw, 46px); margin: 0; line-height: 1.1; }
+  .pps { font-weight: 800; color: #3f5f7a; margin: 6px 0 0; }
+  .patate {
+    font-size: 170px; line-height: 1; background: none; border: 0; cursor: pointer; padding: 10px; margin: 14px 0 4px;
+    filter: drop-shadow(0 10px 0 rgba(0, 0, 0, .2)); animation: respire 3s ease-in-out infinite;
+    transition: transform .07s; -webkit-tap-highlight-color: transparent;
+  }
+  .patate:hover { transform: scale(1.05) rotate(-3deg); }
+  .patate:active { transform: scale(.9) rotate(4deg); }
+  @keyframes respire { 50% { scale: 1.04; } }
+  .clic-info { font-weight: 800; color: #1f4d12; margin: 0; }
+  .journal {
+    margin: 18px 0 0; background: #fff; border: 2px solid var(--encre); border-radius: 14px;
+    padding: 10px 14px; font-size: 15px; font-weight: 700; min-height: 3.4em;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .journal span { animation: glisse .45s; }
+  @keyframes glisse { from { transform: translateY(10px); opacity: 0; } }
+
+  .boutique h2 { font-family: var(--titre); font-weight: 700; font-size: 28px; margin: 0 0 12px; display: flex; justify-content: space-between; align-items: center; }
+  .quantite { display: flex; gap: 6px; }
+  .quantite .btn { font-size: 14px; padding: 4px 10px; box-shadow: 0 3px 0 var(--encre); }
+  .quantite .btn.actif { background: #ffd23f; }
+  .achat {
+    width: 100%; display: grid; grid-template-columns: 52px 1fr auto; gap: 12px; align-items: center; text-align: left;
+    background: #fff; border: 3px solid var(--encre); border-radius: 16px; box-shadow: 0 4px 0 var(--encre);
+    padding: 10px 14px; cursor: pointer; margin-bottom: 12px; color: var(--encre);
+    transition: transform .08s, box-shadow .08s, opacity .2s;
+  }
+  .achat:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 6px 0 var(--encre); }
+  .achat:active:not(:disabled) { transform: translateY(3px); box-shadow: 0 1px 0 var(--encre); }
+  .achat:disabled { opacity: .5; cursor: default; }
+  .achat[hidden] { display: none; }
+  .achat.special { background: #fff7d1; }
+  .ic { font-size: 38px; text-align: center; line-height: 1; }
+  .achat b { font-family: var(--titre); font-weight: 600; font-size: 18px; display: block; }
+  .achat small { color: var(--gris); display: block; font-size: 13.5px; margin: 1px 0 3px; }
+  .prix { font-weight: 800; white-space: nowrap; }
+  .nb { font-family: var(--titre); font-weight: 700; font-size: 30px; color: #cdb48c; min-width: 1.2em; text-align: right; }
+  .recommencer { background: none; border: 0; color: var(--gris); text-decoration: underline; cursor: pointer; margin-top: 8px; font-size: 14px; }
+
+  .plus {
+    position: fixed; pointer-events: none; z-index: 50; font-family: var(--titre); font-weight: 700; font-size: 26px;
+    color: #fff; -webkit-text-stroke: 1.5px var(--encre); paint-order: stroke fill; animation: monte .9s ease-out forwards;
+  }
+  @keyframes monte { to { transform: translateY(-90px); opacity: 0; } }
+  .miette { position: fixed; pointer-events: none; z-index: 49; font-size: 22px; animation: vole .8s ease-out forwards; }
+  @keyframes vole { to { transform: translate(var(--dx), var(--dy)) rotate(360deg); opacity: 0; } }
+  .doree {
+    position: fixed; z-index: 60; font-size: 64px; line-height: 1; background: none; border: 0; padding: 0; cursor: pointer;
+    filter: sepia(1) saturate(5) brightness(1.15) drop-shadow(0 0 16px gold); animation: brille 1s ease-in-out infinite;
+  }
+  @keyframes brille { 50% { transform: scale(1.15) rotate(12deg); } }
+  .toast {
+    position: fixed; left: 50%; top: 18px; transform: translate(-50%, -140%); z-index: 70;
+    background: var(--encre); color: #fff; font-weight: 700; padding: 10px 18px; border-radius: 14px;
+    transition: transform .35s cubic-bezier(.3, 1.4, .5, 1); max-width: calc(100% - 140px); text-align: center;
+  }
+  .toast.visible { transform: translate(-50%, 0); }
+
+  @media (max-width: 760px) {
+    .jeu { grid-template-columns: 1fr; }
+    .champ { position: static; }
+    .patate { font-size: 130px; }
+    .toast { top: 64px; max-width: calc(100% - 32px); }
+  }
+</style>
+</head>
+<body>
+
+<a class="retour" href="index.html">← natx.fun</a>
+<div class="toast" id="toast"></div>
+
+<main class="jeu">
+  <section class="champ">
+    <p class="titre-jeu">👑 L'Empire de la Patate</p>
+    <p class="total" id="total">0 patate</p>
+    <p class="pps" id="pps">par seconde : 0</p>
+    <button class="patate" id="patate" aria-label="Récolter une patate">🥔</button>
+    <p class="clic-info" id="clic-info">+1 par clic</p>
+    <div class="journal" id="journal"></div>
+  </section>
+
+  <section class="boutique">
+    <h2>Boutique
+      <span class="quantite">
+        <button class="btn actif" data-q="1">×1</button>
+        <button class="btn" data-q="10">×10</button>
+      </span>
+    </h2>
+    <button class="achat special" id="amelio"><span class="ic"></span><span><b></b><small></small><span class="prix"></span></span><span></span></button>
+    <div id="liste"></div>
+    <button class="recommencer" id="recommencer">Recommencer à zéro</button>
+  </section>
+</main>
+
+<script>
+const BATIMENTS = [
+  { id: 'mamie', e: '👵', nom: 'Mamie jardinière', prix: 15, pps: .1, txt: 'Elle plante avec amour.' },
+  { id: 'fermier', e: '🧑‍🌾', nom: 'Fermier', prix: 100, pps: 1, txt: 'Il connaît chaque patate par son prénom.' },
+  { id: 'tracteur', e: '🚜', nom: 'Tracteur', prix: 1100, pps: 8, txt: 'Vroum. Patate. Vroum.' },
+  { id: 'usine', e: '🏭', nom: 'Usine à frites', prix: 12000, pps: 47, txt: 'Transforme les patates en… plus de patates.' },
+  { id: 'fastfood', e: '🍟', nom: 'Chaîne de fast-food', prix: 130000, pps: 260, txt: 'Tu veux des frites avec tes frites ?' },
+  { id: 'labo', e: '🧪', nom: 'Labo des patates géantes', prix: 1.4e6, pps: 1400, txt: 'Une patate grosse comme un bus.' },
+  { id: 'fusee', e: '🚀', nom: 'Fusée à patates', prix: 2e7, pps: 7800, txt: 'Livraison spatiale express.' },
+  { id: 'planete', e: '🪐', nom: 'Planète Patate', prix: 3.3e8, pps: 44000, txt: 'Ses anneaux sont en chips.' },
+  { id: 'portail', e: '🌀', nom: 'Portail multivers', prix: 5.1e9, pps: 260000, txt: 'Des patates venues d\'autres dimensions.' },
+  { id: 'sorcier', e: '🧙', nom: 'Grand Sorcier de la Patate', prix: 7.5e10, pps: 1.6e6, txt: 'Abracapatata !' },
+];
+const AMELIORATIONS = [
+  { e: '🧤', nom: 'Gants de jardinage', prix: 100 },
+  { e: '⛏️', nom: 'Pelle en or', prix: 5000 },
+  { e: '🦾', nom: 'Bras bionique', prix: 250000 },
+  { e: '⚛️', nom: 'Clic quantique', prix: 2e7 },
+  { e: '✋', nom: 'Main de la Patate Suprême', prix: 2e9 },
+];
+const NOUVELLES = [
+  [0, "Un enfant découvre qu'on peut cliquer sur une patate. Les experts sont perplexes."],
+  [0, "Info : une patate n'a jamais gagné à cache-cache."],
+  [50, "Ta mamie trouve que tu passes beaucoup de temps avec tes patates."],
+  [500, "Le prix de la patate grimpe de 300 %. Les frites deviennent un produit de luxe."],
+  [5000, "Les frites de la cantine viennent désormais de chez toi."],
+  [50000, "Sondage : 87 % des gens préfèrent tes patates. Les 13 % restants mentent."],
+  [5e5, "Pénurie de ketchup dans tout le pays !"],
+  [5e6, "La NASA confirme : une patate a été vue en orbite."],
+  [5e7, "Les pigeons refusent désormais le pain. Ils veulent des patates."],
+  [5e8, "La Lune est maintenant composée à 3 % de purée."],
+  [5e9, "Des extraterrestres demandent la recette de la purée."],
+  [5e10, "L'univers est officiellement en forme de patate."],
+  [5e11, "Il n'y a plus de place. Où mets-tu toutes ces patates ?!"],
+];
+const PALIERS = [100, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9, 1e10, 1e11, 1e12];
+
+const etat = { patates: 0, total: 0, nb: {}, clic: 0, palier: 0, t: Date.now() };
+let qte = 1, frenesie = 0, remiseAZero = false;
+
+function charger() {
+  try { const s = JSON.parse(localStorage.getItem('natx-patate')); if (s) Object.assign(etat, s); } catch {}
+}
+function sauver() {
+  if (remiseAZero) return;
+  etat.t = Date.now();
+  try { localStorage.setItem('natx-patate', JSON.stringify(etat)); } catch {}
+}
+
+function fmt(n) {
+  if (n < 1000) return n < 100 && n % 1 > .05 ? n.toFixed(1).replace('.', ',') : String(Math.floor(n));
+  if (n < 1e6) return Math.floor(n).toLocaleString('fr-FR');
+  const U = [[1e6, 'million'], [1e9, 'milliard'], [1e12, 'billion'], [1e15, 'billiard'], [1e18, 'trillion'], [1e21, 'trilliard']];
+  let [v, u] = U[0];
+  for (const x of U) if (n >= x[0]) [v, u] = x;
+  const q = n / v;
+  return q.toLocaleString('fr-FR', { maximumFractionDigits: q < 100 ? 2 : 0 }) + ' ' + u + (q >= 2 ? 's' : '');
+}
+
+function ppsBase() { return BATIMENTS.reduce((s, b) => s + (etat.nb[b.id] || 0) * b.pps, 0); }
+function pps() { return ppsBase() * (Date.now() < frenesie ? 5 : 1); }
+function valeurClic() { return 2 ** etat.clic + ppsBase() * .02 * etat.clic; }
+// Chaque bâtiment coûte 15 % de plus que le précédent
+function prix(b, n = qte) { return b.prix * 1.15 ** (etat.nb[b.id] || 0) * (1.15 ** n - 1) / .15; }
+function gagner(n) { etat.patates += n; etat.total += n; }
+
+let minuteurToast;
+function toast(texte) {
+  const t = document.getElementById('toast');
+  t.textContent = texte;
+  t.classList.add('visible');
+  clearTimeout(minuteurToast);
+  minuteurToast = setTimeout(() => t.classList.remove('visible'), 3200);
+}
+
+/* ---------- Boutique ---------- */
+const liste = document.getElementById('liste');
+const boutons = BATIMENTS.map(b => {
+  const el = document.createElement('button');
+  el.className = 'achat';
+  el.innerHTML = '<span class="ic"></span><span><b></b><small></small><span class="prix"></span></span><span class="nb"></span>';
+  el.addEventListener('click', () => {
+    const p = prix(b);
+    if (etat.patates < p) return;
+    etat.patates -= p;
+    etat.nb[b.id] = (etat.nb[b.id] || 0) + qte;
+    maj();
+  });
+  liste.appendChild(el);
+  return el;
+});
+
+const amelio = document.getElementById('amelio');
+amelio.addEventListener('click', () => {
+  const a = AMELIORATIONS[etat.clic];
+  if (!a || etat.patates < a.prix) return;
+  etat.patates -= a.prix;
+  etat.clic++;
+  toast(`${a.e} ${a.nom} ! Tes clics valent maintenant 2× plus.`);
+  maj();
+});
+
+document.querySelectorAll('.quantite .btn').forEach(b => b.addEventListener('click', () => {
+  qte = +b.dataset.q;
+  document.querySelectorAll('.quantite .btn').forEach(x => x.classList.toggle('actif', x === b));
+  maj();
+}));
+
+function maj() {
+  const p = Math.floor(etat.patates);
+  document.getElementById('total').textContent = fmt(p) + (p >= 2 ? ' patates' : ' patate');
+  document.getElementById('pps').textContent = 'par seconde : ' + fmt(pps()) + (Date.now() < frenesie ? ' 🔥 ×5' : '');
+  document.getElementById('clic-info').textContent = '+' + fmt(valeurClic()) + ' par clic';
+
+  let mystere = false;
+  BATIMENTS.forEach((b, i) => {
+    const el = boutons[i], n = etat.nb[b.id] || 0;
+    const connu = n > 0 || etat.total >= b.prix * .6;
+    // Le prochain bâtiment reste mystérieux, les suivants sont cachés
+    if (!connu && mystere) { el.hidden = true; return; }
+    el.hidden = false;
+    if (!connu) mystere = true;
+    el.querySelector('.ic').textContent = connu ? b.e : '❔';
+    el.querySelector('b').textContent = connu ? b.nom : '???';
+    el.querySelector('small').textContent = connu ? `${b.txt} +${fmt(b.pps)}/s chacun.` : 'Récolte encore un peu pour le découvrir…';
+    el.querySelector('.prix').textContent = '🥔 ' + fmt(prix(b)) + (qte > 1 ? ` (×${qte})` : '');
+    el.querySelector('.nb').textContent = n || '';
+    el.disabled = !connu || etat.patates < prix(b);
+  });
+
+  const a = AMELIORATIONS[etat.clic];
+  amelio.hidden = !a;
+  if (a) {
+    amelio.querySelector('.ic').textContent = a.e;
+    amelio.querySelector('b').textContent = a.nom;
+    amelio.querySelector('small').textContent = 'Amélioration : tes clics rapportent 2× plus.';
+    amelio.querySelector('.prix').textContent = '🥔 ' + fmt(a.prix);
+    amelio.disabled = etat.patates < a.prix;
+  }
+
+  while (etat.palier < PALIERS.length && etat.total >= PALIERS[etat.palier]) {
+    toast(`🎉 ${fmt(PALIERS[etat.palier])} patates récoltées au total !`);
+    etat.palier++;
+  }
+}
+
+/* ---------- La grosse patate ---------- */
+const patate = document.getElementById('patate');
+patate.addEventListener('click', e => {
+  const v = valeurClic();
+  gagner(v);
+  let x = e.clientX, y = e.clientY;
+  if (!e.detail) { const r = patate.getBoundingClientRect(); x = r.left + r.width / 2; y = r.top + r.height / 2; }
+  const plus = document.createElement('span');
+  plus.className = 'plus';
+  plus.textContent = '+' + fmt(v);
+  plus.style.left = x - 20 + 'px'; plus.style.top = y - 30 + 'px';
+  document.body.appendChild(plus);
+  setTimeout(() => plus.remove(), 900);
+  for (let i = 0; i < 3; i++) {
+    const m = document.createElement('span');
+    m.className = 'miette';
+    m.textContent = '🥔';
+    m.style.left = x - 11 + 'px'; m.style.top = y - 11 + 'px';
+    m.style.setProperty('--dx', (Math.random() - .5) * 160 + 'px');
+    m.style.setProperty('--dy', 40 + Math.random() * 80 + 'px');
+    document.body.appendChild(m);
+    setTimeout(() => m.remove(), 800);
+  }
+  maj();
+});
+
+/* ---------- Patate dorée (bonus surprise) ---------- */
+function programmerDoree(premiere) {
+  setTimeout(apparaitre, (premiere ? 25 : 45 + Math.random() * 50) * 1000);
+}
+function apparaitre() {
+  const d = document.createElement('button');
+  d.className = 'doree';
+  d.textContent = '🥔';
+  d.setAttribute('aria-label', 'Patate dorée');
+  d.style.left = 20 + Math.random() * (innerWidth - 110) + 'px';
+  d.style.top = 80 + Math.random() * (innerHeight - 180) + 'px';
+  document.body.appendChild(d);
+  const fin = setTimeout(() => { d.remove(); programmerDoree(); }, 10000);
+  d.addEventListener('click', () => {
+    clearTimeout(fin);
+    d.remove();
+    if (Math.random() < .5) {
+      const g = Math.max(ppsBase() * 120, valeurClic() * 40, 50);
+      gagner(g);
+      toast(`✨ Patate dorée ! +${fmt(g)} patates`);
+    } else {
+      frenesie = Date.now() + 20000;
+      toast('🔥 Frénésie ! Production ×5 pendant 20 secondes');
+    }
+    maj();
+    programmerDoree();
+  });
+}
+
+/* ---------- Journal ---------- */
+const journal = document.getElementById('journal');
+function nouvelle() {
+  const dispo = NOUVELLES.filter(([s]) => etat.total >= s);
+  const span = document.createElement('span');
+  span.textContent = '📰 ' + dispo[Math.floor(Math.random() * dispo.length)][1];
+  journal.replaceChildren(span);
+}
+
+document.getElementById('recommencer').addEventListener('click', () => {
+  if (!confirm('Tout recommencer ? Toutes tes patates seront perdues.')) return;
+  remiseAZero = true;
+  try { localStorage.removeItem('natx-patate'); } catch {}
+  location.reload();
+});
+
+/* ---------- Démarrage ---------- */
+charger();
+const absent = (Date.now() - etat.t) / 1000;
+if (absent > 30 && ppsBase() > 0) {
+  const g = ppsBase() * Math.min(absent, 8 * 3600) * .5;
+  gagner(g);
+  setTimeout(() => toast(`🌙 Pendant ton absence, ton empire a récolté ${fmt(g)} patates.`), 500);
+}
+maj();
+nouvelle();
+setInterval(nouvelle, 9000);
+let dernier = performance.now();
+setInterval(() => {
+  const maintenant = performance.now();
+  gagner(pps() * (maintenant - dernier) / 1000);
+  dernier = maintenant;
+  maj();
+}, 100);
+setInterval(sauver, 5000);
+addEventListener('pagehide', sauver);
+programmerDoree(true);
+</script>
+</body>
+</html>
