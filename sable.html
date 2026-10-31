@@ -1,0 +1,322 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>La Boîte à Sable · natx.fun</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏜️</text></svg>">
+<link rel="stylesheet" href="commun.css">
+<style>
+  html, body { height: 100%; overflow: hidden; }
+  body { background: #16131f; color: #fff; touch-action: none; user-select: none; }
+  canvas { position: fixed; top: 0; left: 0; image-rendering: pixelated; cursor: crosshair; }
+  .astuce {
+    position: fixed; top: 18px; left: 0; right: 0; margin: 0; padding: 0 140px; text-align: center; pointer-events: none;
+    font-family: var(--titre); font-weight: 600; font-size: clamp(14px, 2.4vw, 19px); color: #e9e4ff; transition: opacity .4s;
+  }
+  .barre {
+    position: fixed; left: 50%; bottom: 12px; transform: translateX(-50%); width: max-content; max-width: calc(100% - 20px);
+    display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; align-items: center;
+    background: #fff; color: var(--encre); border: 3px solid var(--encre); border-radius: 20px; box-shadow: 0 5px 0 #000; padding: 8px 10px;
+  }
+  .matiere {
+    display: flex; align-items: center; gap: 6px; border: 2px solid transparent; background: #f1f5f9; border-radius: 12px;
+    padding: 6px 10px; font-weight: 800; font-size: 14px; cursor: pointer; color: var(--encre);
+  }
+  .matiere i { width: 14px; height: 14px; border-radius: 4px; background: var(--c); box-shadow: inset 0 0 0 1.5px rgba(0, 0, 0, .25); }
+  .matiere.actif { border-color: var(--encre); background: #fde68a; }
+  .sep { width: 2px; height: 26px; background: #e2e8f0; margin: 0 2px; }
+  .outil { border: 2px solid transparent; background: #f1f5f9; border-radius: 12px; padding: 6px 9px; font-weight: 800; font-size: 14px; cursor: pointer; color: var(--encre); }
+  .outil.actif { border-color: var(--encre); background: #fde68a; }
+  @media (max-width: 640px) { .astuce { padding: 0 16px; top: 62px; } .matiere { padding: 5px 7px; font-size: 13px; } }
+</style>
+</head>
+<body>
+
+<a class="retour" href="index.html">← natx.fun</a>
+<canvas id="toile"></canvas>
+<p class="astuce" id="astuce">Choisis une matière et dessine !</p>
+<nav class="barre" id="barre">
+  <span id="matieres" style="display:contents"></span>
+  <span class="sep"></span>
+  <button class="outil" data-r="2" title="Petit pinceau">•</button>
+  <button class="outil actif" data-r="4" title="Pinceau moyen">●</button>
+  <button class="outil" data-r="8" title="Gros pinceau">⬤</button>
+  <span class="sep"></span>
+  <button class="outil" id="pause" title="Pause">⏸</button>
+  <button class="outil" id="vider" title="Tout effacer">🧹</button>
+</nav>
+
+<script>
+const VIDE = 0, SABLE = 1, EAU = 2, PIERRE = 3, FEU = 4, BOIS = 5, PLANTE = 6, LAVE = 7, VAPEUR = 8, HUILE = 9, FUMEE = 10, BRAISE = 11, GOMME = 99;
+const COULEURS = {
+  [SABLE]: ['#e6c36b', '#dcb55c', '#eccd7d', '#d4ad50'],
+  [EAU]: ['#3b82f6', '#3a7ef0', '#4189f8', '#3578e8'],
+  [PIERRE]: ['#6b7280', '#646a76', '#737a87', '#5d636e'],
+  [FEU]: ['#ffd23f', '#ff9f1c', '#ff6b1a', '#ffe27a'],
+  [BOIS]: ['#8b5a2b', '#7f5227', '#966232', '#835428'],
+  [PLANTE]: ['#22c55e', '#1fb556', '#29d166', '#16a34a'],
+  [LAVE]: ['#ff5a1f', '#f04a12', '#ff7a2e', '#e53d0a'],
+  [VAPEUR]: ['#c7d2fe', '#dbe3ff', '#b9c6fb', '#e0e7ff'],
+  [HUILE]: ['#7c5a2a', '#6e4f24', '#87642f', '#5f441f'],
+  [FUMEE]: ['#3f3f4a', '#474752', '#383842', '#50505c'],
+  [BRAISE]: ['#ff7b00', '#e05a00', '#ffa31a', '#c94a00'],
+};
+const PALETTE = [[SABLE, 'Sable'], [EAU, 'Eau'], [PIERRE, 'Pierre'], [BOIS, 'Bois'], [PLANTE, 'Plante'], [FEU, 'Feu'], [LAVE, 'Lave'], [HUILE, 'Huile'], [GOMME, 'Gomme']];
+const ASTUCES = [
+  "Le feu brûle le bois, les plantes et l'huile.",
+  "Les plantes poussent quand elles touchent de l'eau.",
+  "Lave + eau = pierre (et beaucoup de vapeur).",
+  "La vapeur monte… et retombe parfois en pluie.",
+  "L'huile flotte sur l'eau… et brûle très bien.",
+  "Le sable coule au fond de l'eau.",
+  "Construis un barrage en pierre et remplis-le d'eau !",
+];
+// Densité : un élément lourd passe sous un élément plus léger. 255 = ne bouge jamais.
+const DENS = new Uint8Array(16);
+DENS[VAPEUR] = DENS[FUMEE] = DENS[FEU] = 1; DENS[HUILE] = 5; DENS[EAU] = 6; DENS[LAVE] = 8; DENS[SABLE] = 9;
+DENS[PIERRE] = DENS[BOIS] = DENS[PLANTE] = DENS[BRAISE] = 255;
+const DX = [1, -1, 0, 0], DY = [0, 0, 1, -1];
+const TAILLE = innerWidth < 640 ? 3 : 4;
+
+function abgr(hex) {
+  const n = parseInt(hex.slice(1), 16);
+  return ((255 << 24) | ((n & 255) << 16) | (((n >> 8) & 255) << 8) | (n >> 16)) >>> 0;
+}
+const FOND = abgr('#16131f');
+const PAL = new Uint32Array(12 * 4);
+for (const [m, liste] of Object.entries(COULEURS)) liste.forEach((c, k) => PAL[m * 4 + k] = abgr(c));
+
+const toile = document.getElementById('toile');
+const ctx = toile.getContext('2d');
+const hors = document.createElement('canvas');
+const hctx = hors.getContext('2d');
+let L = 0, H = 0, t, v, vie, maj, img, px, tour = 1, pause = false;
+const R = Math.random;
+
+function redimensionner() {
+  const nL = Math.floor(innerWidth / TAILLE);
+  const nH = Math.floor((document.getElementById('barre').getBoundingClientRect().top - 8) / TAILLE);
+  const ancien = t, aL = L, aH = H;
+  L = nL; H = nH;
+  t = new Uint8Array(L * H); v = new Uint8Array(L * H); vie = new Uint8Array(L * H); maj = new Uint8Array(L * H);
+  // On garde ce qui était déjà dessiné (collé en bas)
+  if (ancien) {
+    const dy = H - aH;
+    for (let y = 0; y < aH; y++) for (let x = 0; x < Math.min(aL, L); x++) {
+      const ny = y + dy;
+      if (ny >= 0 && ny < H) { t[x + ny * L] = ancien[x + y * aL]; v[x + ny * L] = R() * 4 | 0; vie[x + ny * L] = 100; }
+    }
+  }
+  toile.width = L * TAILLE; toile.height = H * TAILLE;
+  toile.style.width = L * TAILLE + 'px'; toile.style.height = H * TAILLE + 'px';
+  hors.width = L; hors.height = H;
+  img = hctx.createImageData(L, H);
+  px = new Uint32Array(img.data.buffer);
+}
+
+function type(x, y) { return x < 0 || x >= L || y < 0 || y >= H ? PIERRE : t[x + y * L]; }
+function peutAller(m, x, y) { return DENS[type(x, y)] < DENS[m]; }
+
+function deplacer(i, j) {
+  const a = t[j], b = v[j], c = vie[j];
+  t[j] = t[i]; v[j] = v[i]; vie[j] = vie[i];
+  t[i] = a; v[i] = b; vie[i] = c;
+  maj[i] = maj[j] = tour;
+}
+
+function poser(i, m, duree) { t[i] = m; v[i] = R() * 4 | 0; vie[i] = duree; maj[i] = tour; }
+
+function poudre(x, y, i, m) {
+  if (peutAller(m, x, y + 1)) return deplacer(i, i + L);
+  const d = R() < .5 ? -1 : 1;
+  if (peutAller(m, x + d, y + 1)) return deplacer(i, i + d + L);
+  if (peutAller(m, x - d, y + 1)) return deplacer(i, i - d + L);
+}
+
+function liquide(x, y, i, m, etalement) {
+  if (peutAller(m, x, y + 1)) return deplacer(i, i + L);
+  const d = R() < .5 ? -1 : 1;
+  if (peutAller(m, x + d, y + 1)) return deplacer(i, i + d + L);
+  if (peutAller(m, x - d, y + 1)) return deplacer(i, i - d + L);
+  for (const s of [d, -d]) {
+    let nx = x;
+    for (let k = 1; k <= etalement && peutAller(m, x + s * k, y); k++) nx = x + s * k;
+    if (nx !== x) return deplacer(i, nx + y * L);
+  }
+}
+
+function gaz(x, y, i, m) {
+  if (--vie[i] === 0) { t[i] = m === VAPEUR && R() < .3 ? EAU : VIDE; return; }
+  if (R() < .25) return;
+  const d = (R() * 3 | 0) - 1, c = type(x + d, y - 1);
+  if (c === VIDE || c === EAU || c === HUILE) return deplacer(i, i + d - L);
+  const s = R() < .5 ? -1 : 1;
+  if (type(x + s, y) === VIDE) deplacer(i, i + s);
+}
+
+function feu(x, y, i) {
+  for (let k = 0; k < 4; k++) {
+    const nx = x + DX[k], ny = y + DY[k];
+    if (nx < 0 || nx >= L || ny < 0 || ny >= H) continue;
+    const n = nx + ny * L, c = t[n];
+    if (c === EAU) { poser(i, VAPEUR, 100 + R() * 100); if (R() < .3) poser(n, VAPEUR, 100 + R() * 100); return; }
+    if (c === BOIS && R() < .12) poser(n, BRAISE, 120 + R() * 120);
+    else if ((c === PLANTE && R() < .15) || (c === HUILE && R() < .3)) poser(n, FEU, 20 + R() * 40);
+  }
+  if (--vie[i] === 0) { if (R() < .3) poser(i, FUMEE, 30 + R() * 50); else t[i] = VIDE; return; }
+  const d = (R() * 3 | 0) - 1;
+  if (R() < .45 && type(x + d, y - 1) === VIDE) deplacer(i, i + d - L);
+}
+
+// Le bois qui brûle reste en place, crache des flammes, puis disparaît
+function braise(x, y, i) {
+  for (let k = 0; k < 4; k++) {
+    const nx = x + DX[k], ny = y + DY[k];
+    if (nx < 0 || nx >= L || ny < 0 || ny >= H) continue;
+    const n = nx + ny * L, c = t[n];
+    if (c === EAU) { poser(i, BOIS, 0); poser(n, VAPEUR, 100 + R() * 100); return; }
+    if (c === BOIS && R() < .03) poser(n, BRAISE, 120 + R() * 120);
+    else if ((c === PLANTE || c === HUILE) && R() < .2) poser(n, FEU, 20 + R() * 40);
+  }
+  if (y > 0 && t[i - L] === VIDE && R() < .25) poser(i - L, FEU, 10 + R() * 25);
+  if (--vie[i] === 0) { if (R() < .5) poser(i, FUMEE, 40); else t[i] = VIDE; }
+}
+
+function lave(x, y, i) {
+  for (let k = 0; k < 4; k++) {
+    const nx = x + DX[k], ny = y + DY[k];
+    if (nx < 0 || nx >= L || ny < 0 || ny >= H) continue;
+    const n = nx + ny * L, c = t[n];
+    if (c === EAU) { poser(i, PIERRE, 0); poser(n, VAPEUR, 120 + R() * 100); return; }
+    if (c === BOIS && R() < .1) poser(n, BRAISE, 120 + R() * 120);
+    else if ((c === PLANTE || c === HUILE) && R() < .2) poser(n, FEU, 20 + R() * 40);
+  }
+  if (y > 0 && t[i - L] === VIDE && R() < .004) poser(i - L, FEU, 10 + R() * 20);
+  if (R() < .5) liquide(x, y, i, LAVE, 1);
+}
+
+function plante(x, y, i) {
+  if (R() > .05) return;
+  const k = R() * 4 | 0, nx = x + DX[k], ny = y + DY[k];
+  if (nx < 0 || nx >= L || ny < 0 || ny >= H) return;
+  const n = nx + ny * L;
+  if (t[n] === EAU) poser(n, PLANTE, 0);
+}
+
+function etape() {
+  tour = tour % 255 + 1;
+  for (let y = H - 1; y >= 0; y--) {
+    const sens = R() < .5;
+    for (let k = 0; k < L; k++) {
+      const x = sens ? k : L - 1 - k, i = x + y * L, m = t[i];
+      if (m === VIDE || m === PIERRE || m === BOIS || maj[i] === tour) continue;
+      switch (m) {
+        case SABLE: poudre(x, y, i, m); break;
+        case EAU: liquide(x, y, i, m, 4); break;
+        case HUILE: liquide(x, y, i, m, 3); break;
+        case LAVE: lave(x, y, i); break;
+        case FEU: feu(x, y, i); break;
+        case BRAISE: braise(x, y, i); break;
+        case PLANTE: plante(x, y, i); break;
+        case VAPEUR: case FUMEE: gaz(x, y, i, m); break;
+      }
+    }
+  }
+}
+
+function rendre() {
+  for (let i = 0; i < t.length; i++) {
+    const m = t[i];
+    if (m === VIDE) { px[i] = FOND; continue; }
+    const s = m === FEU || m === BRAISE ? R() * 4 | 0 : v[i];
+    px[i] = PAL[m * 4 + s];
+  }
+  hctx.putImageData(img, 0, 0);
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(hors, 0, 0, toile.width, toile.height);
+}
+
+/* ---------- Pinceau ---------- */
+let matiere = SABLE, rayon = 4, appui = false, cx = 0, cy = 0;
+function peindre(x0, y0) {
+  for (let dy = -rayon; dy <= rayon; dy++) for (let dx = -rayon; dx <= rayon; dx++) {
+    if (dx * dx + dy * dy > rayon * rayon) continue;
+    const x = x0 + dx, y = y0 + dy;
+    if (x < 0 || x >= L || y < 0 || y >= H) continue;
+    const i = x + y * L;
+    if (matiere === GOMME) { t[i] = VIDE; continue; }
+    if (t[i] !== VIDE) continue;
+    const solide = matiere === PIERRE || matiere === BOIS || matiere === PLANTE;
+    if (!solide && R() > .45) continue;
+    poser(i, matiere, matiere === FEU ? 30 + R() * 50 : 0);
+  }
+}
+function cellule(e) {
+  const r = toile.getBoundingClientRect();
+  return [Math.floor((e.clientX - r.left) / TAILLE), Math.floor((e.clientY - r.top) / TAILLE)];
+}
+toile.addEventListener('pointerdown', e => {
+  appui = true;
+  [cx, cy] = cellule(e);
+  peindre(cx, cy);
+  toile.setPointerCapture(e.pointerId);
+});
+toile.addEventListener('pointermove', e => {
+  if (!appui) return;
+  const [nx, ny] = cellule(e);
+  // On trace une ligne entre l'ancienne et la nouvelle position pour ne pas laisser de trous
+  const pas = Math.max(1, Math.ceil(Math.hypot(nx - cx, ny - cy) / Math.max(1, rayon / 2)));
+  for (let k = 1; k <= pas; k++) peindre(Math.round(cx + (nx - cx) * k / pas), Math.round(cy + (ny - cy) * k / pas));
+  cx = nx; cy = ny;
+});
+addEventListener('pointerup', () => appui = false);
+addEventListener('pointercancel', () => appui = false);
+
+const conteneur = document.getElementById('matieres');
+PALETTE.forEach(([m, nom]) => {
+  const b = document.createElement('button');
+  b.className = 'matiere' + (m === matiere ? ' actif' : '');
+  b.innerHTML = `<i style="--c:${m === GOMME ? '#ffffff' : COULEURS[m][0]}"></i>${nom}`;
+  b.addEventListener('click', () => {
+    matiere = m;
+    conteneur.querySelectorAll('.matiere').forEach(x => x.classList.toggle('actif', x === b));
+  });
+  conteneur.appendChild(b);
+});
+document.querySelectorAll('.outil[data-r]').forEach(b => b.addEventListener('click', () => {
+  rayon = +b.dataset.r;
+  document.querySelectorAll('.outil[data-r]').forEach(x => x.classList.toggle('actif', x === b));
+}));
+document.getElementById('pause').addEventListener('click', e => {
+  pause = !pause;
+  e.currentTarget.textContent = pause ? '▶' : '⏸';
+  e.currentTarget.classList.toggle('actif', pause);
+});
+document.getElementById('vider').addEventListener('click', () => t.fill(VIDE));
+
+let astuce = 0;
+setInterval(() => {
+  const el = document.getElementById('astuce');
+  el.style.opacity = 0;
+  setTimeout(() => { el.textContent = '💡 ' + ASTUCES[astuce++ % ASTUCES.length]; el.style.opacity = 1; }, 400);
+}, 7000);
+
+addEventListener('resize', redimensionner);
+redimensionner();
+// Petit paysage de départ : des dunes de sable
+for (let x = 0; x < L; x++) {
+  const h = Math.floor(7 + 4 * Math.sin(x * .05) + 3 * Math.sin(x * .13 + 1));
+  for (let y = H - h; y < H; y++) poser(x + y * L, SABLE, 0);
+}
+
+function boucle() {
+  if (appui) peindre(cx, cy);
+  if (!pause) etape();
+  rendre();
+  requestAnimationFrame(boucle);
+}
+requestAnimationFrame(boucle);
+</script>
+</body>
+</html>

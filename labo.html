@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Le Labo des Mélanges · natx.fun</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧪</text></svg>">
+<link rel="stylesheet" href="commun.css">
+<style>
+  body { background-color: #e6fbf3; background-image: radial-gradient(rgba(6, 95, 70, .12) 1.2px, transparent 1.3px); }
+  .page { max-width: 900px; margin: 0 auto; padding: 70px 16px 40px; text-align: center; }
+  h1 { font-family: var(--titre); font-weight: 700; font-size: clamp(30px, 6vw, 46px); margin: 0; }
+  .progres { max-width: 360px; margin: 10px auto 22px; }
+  .progres p { margin: 0 0 6px; font-weight: 800; color: #065f46; }
+  .barre-p { height: 14px; background: #fff; border: 3px solid var(--encre); border-radius: 999px; overflow: hidden; }
+  .barre-p i { display: block; height: 100%; background: linear-gradient(90deg, #34d399, #10b981); transition: width .5s; }
+
+  .etabli {
+    display: flex; align-items: center; justify-content: center; gap: clamp(8px, 2vw, 16px);
+    background: #fff; border: 3px solid var(--encre); border-radius: 26px; box-shadow: 0 7px 0 var(--encre); padding: 22px 12px;
+  }
+  .op { font-family: var(--titre); font-weight: 700; font-size: 34px; color: #94a3b8; }
+  .slot {
+    width: clamp(86px, 20vw, 120px); height: clamp(86px, 20vw, 120px); border-radius: 50%;
+    border: 3px dashed #94a3b8; background: #f8fafc; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    cursor: pointer; padding: 0; color: var(--encre); transition: transform .15s;
+  }
+  .slot.plein { border-style: solid; border-color: var(--encre); background: #fff; }
+  .slot b { font-size: clamp(38px, 9vw, 52px); line-height: 1; }
+  .slot small { font-weight: 800; font-size: 13px; margin-top: 4px; max-width: 90%; }
+  .slot.resultat { cursor: default; background: #fef9c3; border-color: #eab308; }
+  .slot.resultat.trouve { animation: trouve .6s cubic-bezier(.3, 1.6, .5, 1); background: #fde68a; border-style: solid; box-shadow: 0 0 0 8px rgba(250, 204, 21, .35); }
+  .slot.resultat.rate { animation: secoue .4s; }
+  @keyframes trouve { from { transform: scale(.4) rotate(-20deg); } }
+  @keyframes secoue { 25% { transform: translateX(-8px); } 75% { transform: translateX(8px); } }
+  .message { font-weight: 800; font-size: 18px; min-height: 1.6em; margin: 16px 0 6px; }
+  .actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-bottom: 22px; }
+  .actions .btn { font-size: 15px; padding: 8px 14px; }
+
+  .inventaire { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+  .el {
+    display: inline-flex; align-items: center; gap: 6px; background: #fff; border: 2px solid var(--encre); border-radius: 999px;
+    padding: 6px 13px 6px 9px; font-weight: 800; font-size: 15px; cursor: pointer; color: var(--encre);
+    box-shadow: 0 3px 0 var(--encre); transition: transform .08s, box-shadow .08s;
+  }
+  .el span { font-size: 22px; line-height: 1; }
+  .el:hover { transform: translateY(-2px); box-shadow: 0 5px 0 var(--encre); }
+  .el:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--encre); }
+  .el.choisi { background: #fde68a; }
+  .el.nouveau { animation: nouveau 1.2s; background: #d1fae5; }
+  .el.epuise { opacity: .5; }
+  @keyframes nouveau { 0% { transform: scale(0); } 50% { transform: scale(1.25); } }
+  .confetti { position: fixed; top: -20px; width: 10px; height: 14px; z-index: 50; pointer-events: none; animation: tombe linear forwards; }
+  @keyframes tombe { to { transform: translateY(110vh) rotate(720deg); } }
+</style>
+</head>
+<body>
+
+<a class="retour" href="index.html">← natx.fun</a>
+
+<main class="page">
+  <h1>Le Labo des Mélanges</h1>
+  <div class="progres">
+    <p id="compte">4 / 80 découvertes</p>
+    <div class="barre-p"><i id="barre-p"></i></div>
+  </div>
+
+  <section class="etabli">
+    <button class="slot" id="s0" aria-label="Premier ingrédient"><b>?</b></button>
+    <span class="op">+</span>
+    <button class="slot" id="s1" aria-label="Deuxième ingrédient"><b>?</b></button>
+    <span class="op">=</span>
+    <div class="slot resultat" id="res"><b>✨</b></div>
+  </section>
+  <p class="message" id="message">Clique sur deux éléments pour les mélanger.</p>
+  <div class="actions">
+    <button class="btn" id="indice">💡 Indice</button>
+    <button class="btn" id="recommencer">🔄 Recommencer</button>
+  </div>
+  <div class="inventaire" id="inventaire"></div>
+</main>
+
+<script>
+const E = {
+  eau: ['💧', 'Eau'], feu: ['🔥', 'Feu'], terre: ['🟫', 'Terre'], air: ['💨', 'Air'],
+  vapeur: ['♨️', 'Vapeur'], boue: ['🟤', 'Boue'], lave: ['🌋', 'Lave'], energie: ['⚡', 'Énergie'], pluie: ['🌧️', 'Pluie'],
+  poussiere: ['🌫️', 'Poussière'], pierre: ['🪨', 'Pierre'], metal: ['🔩', 'Métal'], sable: ['🟨', 'Sable'], verre: ['🪟', 'Verre'],
+  plante: ['🌱', 'Plante'], arbre: ['🌳', 'Arbre'], nuage: ['☁️', 'Nuage'], orage: ['⛈️', 'Orage'], tornade: ['🌪️', 'Tornade'],
+  soleil: ['☀️', 'Soleil'], fleur: ['🌻', 'Fleur'], arcenciel: ['🌈', 'Arc-en-ciel'],
+  vie: ['🧬', 'Vie'], poisson: ['🐟', 'Poisson'], oiseau: ['🐦', 'Oiseau'], ver: ['🪱', 'Ver de terre'], abeille: ['🐝', 'Abeille'],
+  miel: ['🍯', 'Miel'], cochon: ['🐷', 'Cochon'], licorne: ['🦄', 'Licorne'], lezard: ['🦎', 'Lézard'], dragon: ['🐉', 'Dragon'],
+  dinosaure: ['🦖', 'Dinosaure'], bois: ['🪵', 'Bois'], outil: ['🔨', 'Outil'], feucamp: ['🏕️', 'Feu de camp'], humain: ['🧍', 'Humain'],
+  fermier: ['🧑‍🌾', 'Fermier'], patate: ['🥔', 'Patate'], frites: ['🍟', 'Frites'], puree: ['🥣', 'Purée'], flemmard: ['🛋️', 'Flemmard'],
+  chat: ['🐱', 'Chat'], cuisinier: ['🧑‍🍳', 'Cuisinier'], electricite: ['🔌', 'Électricité'], ampoule: ['💡', 'Idée lumineuse'],
+  robot: ['🤖', 'Robot'], cyborg: ['🦾', 'Cyborg'], ordinateur: ['💻', 'Ordinateur'], internet: ['🌐', 'Internet'], gamer: ['🎮', 'Gamer'],
+  jeuvideo: ['👾', 'Jeu vidéo'], meme: ['😹', 'Mème'], influenceur: ['🤳', 'Influenceur'], natx: ['🎈', 'natx.fun'],
+  lac: ['🏞️', 'Lac'], mer: ['🌊', 'Mer'], sel: ['🧂', 'Sel'], plage: ['🏖️', 'Plage'], vacances: ['😎', 'Vacances'],
+  montagne: ['⛰️', 'Montagne'], neige: ['❄️', 'Neige'], glace: ['🧊', 'Glace'], bonhomme: ['⛄', 'Bonhomme de neige'],
+  sablier: ['⏳', 'Temps'], papy: ['👴', 'Papy'], squelette: ['💀', 'Squelette'], nuit: ['🌙', 'Nuit'], lune: ['🌕', 'Lune'],
+  fantome: ['👻', 'Fantôme'], citrouille: ['🎃', 'Citrouille'], foret: ['🌲', 'Forêt'], ours: ['🐻', 'Ours'], nounours: ['🧸', 'Nounours'],
+  avion: ['✈️', 'Avion'], fusee: ['🚀', 'Fusée'], espace: ['🌌', 'Espace'], alien: ['👽', 'Extraterrestre'], planete: ['🪐', 'Planète'],
+  chevalier: ['⚔️', 'Chevalier'],
+};
+const RECETTES = [
+  ['eau', 'feu', 'vapeur'], ['eau', 'terre', 'boue'], ['feu', 'terre', 'lave'], ['air', 'feu', 'energie'], ['air', 'eau', 'pluie'],
+  ['air', 'terre', 'poussiere'], ['lave', 'eau', 'pierre'], ['lave', 'air', 'pierre'], ['pierre', 'feu', 'metal'], ['pierre', 'air', 'sable'],
+  ['sable', 'feu', 'verre'], ['pluie', 'terre', 'plante'], ['plante', 'pluie', 'arbre'], ['vapeur', 'air', 'nuage'], ['nuage', 'energie', 'orage'],
+  ['orage', 'air', 'tornade'], ['nuage', 'feu', 'soleil'], ['plante', 'soleil', 'fleur'], ['pluie', 'soleil', 'arcenciel'],
+  ['energie', 'boue', 'vie'], ['vie', 'eau', 'poisson'], ['vie', 'air', 'oiseau'], ['vie', 'terre', 'ver'], ['vie', 'fleur', 'abeille'],
+  ['abeille', 'fleur', 'miel'], ['vie', 'boue', 'cochon'], ['vie', 'arcenciel', 'licorne'], ['vie', 'sable', 'lezard'],
+  ['lezard', 'feu', 'dragon'], ['lezard', 'sablier', 'dinosaure'], ['arbre', 'metal', 'bois'], ['metal', 'bois', 'outil'],
+  ['bois', 'feu', 'feucamp'], ['vie', 'outil', 'humain'], ['humain', 'plante', 'fermier'], ['fermier', 'terre', 'patate'],
+  ['patate', 'feu', 'frites'], ['patate', 'eau', 'puree'], ['humain', 'patate', 'flemmard'], ['vie', 'flemmard', 'chat'],
+  ['humain', 'feu', 'cuisinier'], ['cuisinier', 'patate', 'frites'], ['energie', 'metal', 'electricite'], ['electricite', 'verre', 'ampoule'],
+  ['electricite', 'metal', 'robot'], ['robot', 'humain', 'cyborg'], ['sable', 'electricite', 'ordinateur'], ['ordinateur', 'ordinateur', 'internet'],
+  ['humain', 'ordinateur', 'gamer'], ['gamer', 'ordinateur', 'jeuvideo'], ['internet', 'chat', 'meme'], ['internet', 'humain', 'influenceur'],
+  ['internet', 'jeuvideo', 'natx'], ['eau', 'eau', 'lac'], ['lac', 'lac', 'mer'], ['mer', 'feu', 'sel'], ['sable', 'mer', 'plage'],
+  ['plage', 'soleil', 'vacances'], ['terre', 'terre', 'montagne'], ['nuage', 'montagne', 'neige'], ['neige', 'eau', 'glace'],
+  ['neige', 'humain', 'bonhomme'], ['sable', 'verre', 'sablier'], ['humain', 'sablier', 'papy'], ['papy', 'sablier', 'squelette'],
+  ['soleil', 'sablier', 'nuit'], ['pierre', 'nuit', 'lune'], ['humain', 'nuit', 'fantome'], ['plante', 'nuit', 'citrouille'],
+  ['arbre', 'arbre', 'foret'], ['vie', 'foret', 'ours'], ['ours', 'miel', 'nounours'], ['metal', 'oiseau', 'avion'], ['avion', 'feu', 'fusee'],
+  ['fusee', 'nuit', 'espace'], ['vie', 'espace', 'alien'], ['terre', 'espace', 'planete'], ['dragon', 'humain', 'chevalier'],
+  ['glace', 'feu', 'eau'],
+];
+const BASE = ['eau', 'feu', 'terre', 'air'];
+const TOTAL = Object.keys(E).length;
+const cle = (a, b) => [a, b].sort().join('+');
+const TABLE = new Map(RECETTES.map(([a, b, r]) => [cle(a, b), r]));
+
+let connus = [...BASE], choix = [null, null], bloque = false, dernierNouveau = null;
+try {
+  const s = JSON.parse(localStorage.getItem('natx-labo'));
+  if (Array.isArray(s)) connus = [...new Set([...BASE, ...s.filter(id => E[id])])];
+} catch {}
+function sauver() { try { localStorage.setItem('natx-labo', JSON.stringify(connus)); } catch {} }
+
+const slots = [document.getElementById('s0'), document.getElementById('s1')];
+const res = document.getElementById('res');
+const message = document.getElementById('message');
+const inventaire = document.getElementById('inventaire');
+
+function remplir(el, id) {
+  el.classList.toggle('plein', !!id);
+  el.innerHTML = id ? `<b>${E[id][0]}</b><small>${E[id][1]}</small>` : '<b>?</b>';
+}
+
+// Un élément est « épuisé » quand toutes ses recettes donnent des choses déjà trouvées
+function epuise(id) {
+  return !RECETTES.some(([a, b, r]) => (a === id || b === id) && !connus.includes(r));
+}
+
+function afficherInventaire() {
+  inventaire.replaceChildren(...connus.map(id => {
+    const b = document.createElement('button');
+    b.className = 'el' + (choix.includes(id) ? ' choisi' : '') + (id === dernierNouveau ? ' nouveau' : '') + (epuise(id) ? ' epuise' : '');
+    b.innerHTML = `<span>${E[id][0]}</span>${E[id][1]}`;
+    if (epuise(id)) b.title = 'Plus rien à découvrir avec cet élément';
+    b.addEventListener('click', () => choisir(id));
+    return b;
+  }));
+  document.getElementById('compte').textContent = `${connus.length} / ${TOTAL} découvertes`;
+  document.getElementById('barre-p').style.width = connus.length / TOTAL * 100 + '%';
+}
+
+function choisir(id) {
+  if (bloque) return;
+  const k = choix[0] === null ? 0 : 1;
+  choix[k] = id;
+  remplir(slots[k], id);
+  afficherInventaire();
+  if (k === 1) melanger();
+}
+
+function vider() {
+  choix = [null, null];
+  slots.forEach(s => remplir(s, null));
+  res.className = 'slot resultat';
+  res.innerHTML = '<b>✨</b>';
+  bloque = false;
+  afficherInventaire();
+}
+
+function melanger() {
+  bloque = true;
+  const r = TABLE.get(cle(choix[0], choix[1]));
+  res.className = 'slot resultat';
+  void res.offsetWidth;
+  if (!r) {
+    res.classList.add('rate');
+    res.innerHTML = '<b>💨</b>';
+    message.textContent = 'Rien ne se passe… 🤔';
+    setTimeout(vider, 900);
+    return;
+  }
+  res.innerHTML = `<b>${E[r][0]}</b><small>${E[r][1]}</small>`;
+  if (connus.includes(r)) {
+    res.classList.add('plein');
+    message.textContent = `Déjà découvert : ${E[r][0]} ${E[r][1]}`;
+    dernierNouveau = null;
+  } else {
+    res.classList.add('trouve');
+    connus.push(r);
+    dernierNouveau = r;
+    sauver();
+    if (r === 'natx') message.textContent = '🎈 Tu as trouvé… ce site ! Bien joué, petit génie.';
+    else if (connus.length === TOTAL) message.textContent = `🏆 INCROYABLE ! Tu as tout découvert (${TOTAL}/${TOTAL}) !`;
+    else message.textContent = `✨ Nouvelle découverte : ${E[r][0]} ${E[r][1]} !`;
+    if (r === 'natx' || connus.length === TOTAL) confettis();
+  }
+  setTimeout(vider, 1300);
+}
+
+function confettis() {
+  const couleurs = ['#ff5a36', '#ffd23f', '#3ddc97', '#38bdf8', '#a78bfa', '#ff8fab'];
+  for (let i = 0; i < 100; i++) {
+    const c = document.createElement('i');
+    c.className = 'confetti';
+    c.style.left = Math.random() * 100 + 'vw';
+    c.style.background = couleurs[i % couleurs.length];
+    c.style.animationDuration = 2 + Math.random() * 2.5 + 's';
+    c.style.animationDelay = Math.random() * .6 + 's';
+    document.body.appendChild(c);
+    setTimeout(() => c.remove(), 5500);
+  }
+}
+
+slots.forEach((s, k) => s.addEventListener('click', () => {
+  if (bloque || choix[k] === null) return;
+  choix[k] = null;
+  if (k === 0 && choix[1]) choix = [choix[1], null];
+  remplir(slots[0], choix[0]);
+  remplir(slots[1], choix[1]);
+  afficherInventaire();
+}));
+
+document.getElementById('indice').addEventListener('click', () => {
+  const possibles = RECETTES.filter(([a, b, r]) => connus.includes(a) && connus.includes(b) && !connus.includes(r));
+  if (!possibles.length) { message.textContent = '🏆 Tu as déjà tout trouvé !'; return; }
+  const [a] = possibles[Math.floor(Math.random() * possibles.length)];
+  message.textContent = `💡 Essaie de mélanger ${E[a][0]} ${E[a][1]} avec quelque chose…`;
+});
+
+document.getElementById('recommencer').addEventListener('click', () => {
+  if (!confirm('Tout recommencer ? Tes découvertes seront effacées.')) return;
+  connus = [...BASE];
+  dernierNouveau = null;
+  sauver();
+  vider();
+  message.textContent = 'Clique sur deux éléments pour les mélanger.';
+});
+
+afficherInventaire();
+</script>
+</body>
+</html>

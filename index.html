@@ -6,7 +6,7 @@
 <title>natx.fun</title>
 <meta name="description" content="Des petits trucs inutiles mais géniaux à faire sur Internet.">
 <meta property="og:title" content="natx.fun">
-<meta property="og:description" content="9 petits jeux inutiles mais géniaux : bouton interdit, planètes, musique, patates…">
+<meta property="og:description" content="12 petits jeux inutiles mais géniaux : survivre au collège, bac à sable, labo des mélanges, planètes, patates…">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎈</text></svg>">
 <link rel="stylesheet" href="commun.css">
 <style>
@@ -57,6 +57,37 @@
     background: #ff5a36; color: #fff; font-family: var(--titre); font-weight: 700; font-size: 12px; letter-spacing: 1.5px;
     padding: 4px 44px; border-block: 2px solid var(--encre);
   }
+
+  /* Survivre au collège */
+  .v-college { background: #93c5fd; }
+  .mini-jauges { position: absolute; top: 16px; display: flex; gap: 16px; font-size: 22px; }
+  .pile { position: relative; width: 160px; height: 120px; margin-top: 34px; }
+  .fiche {
+    position: absolute; inset: 0; background: #fff; border: 3px solid var(--encre); border-radius: 16px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+    font-family: var(--titre); font-weight: 600; font-size: 15px; transition: transform .35s;
+  }
+  .fiche span { font-size: 50px; line-height: 1; }
+  .fiche.dessous { background: #dbe8ff; transform: rotate(6deg) translate(8px, 4px); }
+  .fiche.dessus { transform: rotate(-4deg); }
+  .carte:hover .fiche.dessus { transform: rotate(-18deg) translateX(-40px); }
+
+  /* La boîte à sable */
+  .v-sable { background: #16131f; }
+  .v-sable canvas { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; }
+
+  /* Le labo des mélanges */
+  .v-labo { background: linear-gradient(#a7f3d0, #6ee7b7); }
+  .equation { display: flex; align-items: center; gap: 8px; font-family: var(--titre); font-weight: 700; font-size: 26px; position: relative; }
+  .rond {
+    width: 64px; height: 64px; border-radius: 50%; background: #fff; border: 3px solid var(--encre);
+    display: grid; place-items: center; font-size: 32px; box-shadow: 0 4px 0 var(--encre);
+  }
+  .rond.res { background: #fde68a; animation: pulse 1.6s ease-in-out infinite; }
+  .carte:hover .rond.res { animation-duration: .5s; }
+  @keyframes pulse { 50% { transform: scale(1.12); } }
+  .bul { position: absolute; bottom: -20px; width: 14px; height: 14px; border-radius: 50%; border: 2px solid rgba(31, 29, 43, .3); animation: bulle 4.5s linear infinite; }
+  @keyframes bulle { to { transform: translateY(-250px); } }
 
   /* 1. Bouton interdit */
   .v-bouton { background: #ffd23f; gap: 18px; }
@@ -182,6 +213,46 @@
 
 <main class="grille" id="grille">
 
+  <a class="carte" href="college.html">
+    <div class="vignette v-college">
+      <span class="nouveau">NOUVEAU</span>
+      <div class="mini-jauges"><span>📚</span><span>👥</span><span>⚡</span><span>🏠</span></div>
+      <div class="pile">
+        <div class="fiche dessous"></div>
+        <div class="fiche dessus"><span>👩‍🏫</span>Contrôle surprise !</div>
+      </div>
+    </div>
+    <div class="infos">
+      <h2>Survivre au Collège</h2>
+      <p>Profs, potes, parents… Garde tout en équilibre le plus longtemps possible.</p>
+    </div>
+  </a>
+
+  <a class="carte" href="sable.html">
+    <div class="vignette v-sable">
+      <span class="nouveau">NOUVEAU</span>
+      <canvas id="mini-sable" width="80" height="50"></canvas>
+    </div>
+    <div class="infos">
+      <h2>La Boîte à Sable</h2>
+      <p>Sable, eau, feu, lave, plantes… Dessine et regarde la nature faire le reste.</p>
+    </div>
+  </a>
+
+  <a class="carte" href="labo.html">
+    <div class="vignette v-labo">
+      <span class="nouveau">NOUVEAU</span>
+      <i class="bul" style="left:12%"></i>
+      <i class="bul" style="left:80%;animation-delay:-1.5s"></i>
+      <i class="bul" style="left:48%;animation-delay:-3s;width:10px;height:10px"></i>
+      <div class="equation"><span class="rond">🔥</span>+<span class="rond">💧</span>=<span class="rond res">♨️</span></div>
+    </div>
+    <div class="infos">
+      <h2>Le Labo des Mélanges</h2>
+      <p>Mélange l'eau, le feu, la terre et l'air. 80 choses à découvrir.</p>
+    </div>
+  </a>
+
   <a class="carte" href="bouton.html">
     <div class="vignette v-bouton">
       <span class="etiquette">NE PAS APPUYER</span>
@@ -195,7 +266,6 @@
 
   <a class="carte" href="cosmos.html">
     <div class="vignette v-cosmos">
-      <span class="nouveau">NOUVEAU</span>
       <i class="orbite o2"><b class="astre"></b></i>
       <i class="orbite o1"><b class="astre"></b></i>
       <i class="soleil"></i>
@@ -208,7 +278,6 @@
 
   <a class="carte" href="melodie.html">
     <div class="vignette v-melodie">
-      <span class="nouveau">NOUVEAU</span>
       <div class="mini-grille" id="mini-grille"></div>
       <i class="tete"></i>
     </div>
@@ -220,7 +289,6 @@
 
   <a class="carte" href="patate.html">
     <div class="vignette v-patate">
-      <span class="nouveau">NOUVEAU</span>
       <span class="couronne">👑</span>
       <span class="grosse-patate">🥔</span>
       <span class="plus1" style="left:22%;top:70px">+1</span>
@@ -323,7 +391,7 @@
 </main>
 
 <footer>
-  Fait maison par natx · 9 jeux, aucune pub, aucun compte, juste du fun.<br>
+  Fait maison par natx · 12 jeux, aucune pub, aucun compte, juste du fun.<br>
   Reviens souvent : de nouveaux jeux arrivent.
 </footer>
 
@@ -337,6 +405,25 @@ lignes.forEach((l, r) => [...l].forEach(b => {
   if (b === '1') { i.className = 'on'; i.style.setProperty('--c', couleurs[r]); }
   mg.appendChild(i);
 }));
+
+// Petite scène en pixels de la carte « Boîte à Sable »
+(function () {
+  const g = document.getElementById('mini-sable').getContext('2d');
+  const pixel = (x, y, c) => { g.fillStyle = c; g.fillRect(x, y, 1, 1); };
+  const hasard = l => l[Math.floor(Math.random() * l.length)];
+  const sable = ['#e6c36b', '#dcb55c', '#eccd7d', '#d4ad50'], eau = ['#3b82f6', '#4189f8', '#3578e8'];
+  for (let x = 0; x < 80; x++) {
+    const h = Math.round(5 + 13 * Math.exp(-(((x - 20) / 11) ** 2)) + Math.sin(x * .7));
+    for (let y = 50 - h; y < 50; y++) pixel(x, y, hasard(sable));
+    if (x > 44) for (let y = 40; y < 50 - h; y++) pixel(x, y, hasard(eau));
+  }
+  for (let x = 52; x < 74; x++) { pixel(x, 26, '#8b5a2b'); pixel(x, 27, '#7f5227'); }
+  for (let k = 0; k < 40; k++) pixel(53 + Math.random() * 20 | 0, 25 - Math.random() * Math.random() * 9 | 0, hasard(['#ffd23f', '#ff9f1c', '#ff6b1a']));
+  for (let k = 0; k < 14; k++) pixel(55 + Math.random() * 16 | 0, 6 + Math.random() * 10 | 0, hasard(['#3f3f4a', '#50505c']));
+  for (let y = 2; y < 30; y += 3) pixel(20 + (Math.random() * 2 | 0), y, hasard(sable));
+  for (let y = 30; y < 41; y++) pixel(38 + (y % 3 === 0 ? 1 : 0), y, '#22c55e');
+  [[37, 33], [40, 35], [36, 37], [41, 31]].forEach(([x, y]) => pixel(x, y, '#29d166'));
+})();
 
 // Les cartes penchent vers la souris
 document.querySelectorAll('.carte').forEach(c => {

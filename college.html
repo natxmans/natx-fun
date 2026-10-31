@@ -1,0 +1,314 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Survivre au Collège · natx.fun</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎒</text></svg>">
+<link rel="stylesheet" href="commun.css">
+<style>
+  body { background-color: #dbe8ff; background-image: radial-gradient(rgba(30, 58, 138, .12) 1.2px, transparent 1.3px); overflow-x: hidden; }
+  .page { max-width: 560px; margin: 0 auto; padding: 66px 16px 30px; text-align: center; }
+  h1 { font-family: var(--titre); font-weight: 700; font-size: clamp(28px, 6vw, 40px); margin: 0; }
+  .jour { font-weight: 800; color: #3b5b9a; margin: 4px 0 18px; font-size: 17px; }
+
+  .jauges { display: flex; justify-content: center; gap: clamp(14px, 5vw, 26px); margin-bottom: 20px; }
+  .jauge { display: flex; flex-direction: column; align-items: center; gap: 5px; }
+  .jauge .ic { font-size: 24px; line-height: 1; }
+  .jauge small { font-weight: 800; font-size: 12px; color: #3b5b9a; }
+  .tube { width: 36px; height: 68px; border: 3px solid var(--encre); border-radius: 11px; background: #fff; position: relative; overflow: hidden; }
+  .niveau { position: absolute; left: 0; right: 0; bottom: 0; background: var(--c); transition: height .5s cubic-bezier(.3, 1.4, .5, 1); }
+  .tube.danger { animation: alerte .7s infinite; }
+  @keyframes alerte { 50% { border-color: #ef4444; box-shadow: 0 0 0 3px rgba(239, 68, 68, .35); } }
+  .point { width: 10px; height: 10px; border-radius: 50%; background: var(--encre); transform: scale(0); transition: transform .2s; }
+  .point.visible { transform: scale(var(--t, 1)); }
+
+  .zone { position: relative; height: 350px; }
+  .carte {
+    position: absolute; left: 0; right: 0; top: 0; height: 330px; margin: 0 auto; max-width: 340px;
+    background: #fff; border: 3px solid var(--encre); border-radius: 26px; box-shadow: 0 8px 0 var(--encre);
+    display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 56px 22px 22px;
+    cursor: grab; touch-action: none; user-select: none; transition: transform .35s, opacity .35s;
+  }
+  .carte.glisse { transition: none; cursor: grabbing; }
+  .derriere { position: absolute; left: 0; right: 0; top: 10px; height: 330px; margin: 0 auto; max-width: 340px; background: #c7d7fb; border: 3px solid var(--encre); border-radius: 26px; transform: rotate(3deg); }
+  .perso { font-size: 88px; line-height: 1; }
+  .nom { font-family: var(--titre); font-weight: 600; color: var(--gris); margin: 10px 0 8px; font-size: 17px; }
+  .texte { font-size: 20px; font-weight: 800; line-height: 1.35; margin: 0; }
+  .choix-carte {
+    position: absolute; top: 12px; left: 12px; right: 12px; font-family: var(--titre); font-weight: 600; font-size: 16px;
+    padding: 8px 10px; border-radius: 12px; background: var(--encre); color: #fff; opacity: 0; transition: opacity .15s;
+  }
+  .boutons { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 8px; }
+  .boutons .btn { font-size: 15.5px; padding: 12px 10px; line-height: 1.25; }
+  .aide { color: #5a6f99; font-size: 14px; margin-top: 16px; }
+
+  .fin {
+    background: #fff; border: 3px solid var(--encre); border-radius: 26px; box-shadow: 0 8px 0 var(--encre);
+    padding: 26px 22px; animation: arrive .45s cubic-bezier(.3, 1.5, .5, 1);
+  }
+  .fin[hidden] { display: none; }
+  @keyframes arrive { from { transform: scale(.7) rotate(-4deg); opacity: 0; } }
+  .fin .grand { font-size: 84px; line-height: 1; }
+  .fin h2 { font-family: var(--titre); font-weight: 700; font-size: 30px; margin: 10px 0 6px; }
+  .fin p { font-size: 18px; line-height: 1.45; margin: 0 0 12px; }
+  .fin .score { font-family: var(--titre); font-weight: 600; font-size: 22px; }
+  .fin .btn { background: #ffd23f; font-size: 20px; margin-top: 6px; }
+  .toast {
+    position: fixed; left: 50%; top: 16px; transform: translate(-50%, -150%); z-index: 50; background: var(--encre); color: #fff;
+    font-weight: 800; padding: 10px 18px; border-radius: 14px; transition: transform .35s cubic-bezier(.3, 1.4, .5, 1);
+  }
+  .toast.visible { transform: translate(-50%, 0); }
+</style>
+</head>
+<body>
+
+<a class="retour" href="index.html">← natx.fun</a>
+<div class="toast" id="toast"></div>
+
+<main class="page">
+  <h1>Survivre au Collège</h1>
+  <p class="jour" id="jour">Jour 1 · Lundi</p>
+  <div class="jauges" id="jauges"></div>
+
+  <div id="jeu">
+    <div class="zone">
+      <div class="derriere"></div>
+      <div class="carte" id="carte">
+        <div class="choix-carte" id="choix-carte"></div>
+        <div class="perso" id="perso"></div>
+        <div class="nom" id="nom"></div>
+        <p class="texte" id="texte"></p>
+      </div>
+    </div>
+    <div class="boutons">
+      <button class="btn" id="b0"></button>
+      <button class="btn" id="b1"></button>
+    </div>
+    <p class="aide">Fais glisser la carte, clique un choix ou utilise ← →. Si une jauge est vide… ou pleine, c'est perdu !</p>
+  </div>
+
+  <section class="fin" id="fin" hidden>
+    <div class="grand" id="fin-emoji"></div>
+    <h2>Fin de partie</h2>
+    <p id="fin-texte"></p>
+    <p class="score" id="fin-score"></p>
+    <p id="fin-record"></p>
+    <button class="btn" id="rejouer">🔁 Rejouer</button>
+  </section>
+</main>
+
+<script>
+// [icône, nom, couleur]
+const JAUGES = [['📚', 'Notes', '#60a5fa'], ['👥', 'Potes', '#f472b6'], ['⚡', 'Énergie', '#facc15'], ['🏠', 'Parents', '#34d399']];
+// Pour chaque jauge : [émoji si vide, texte si vide, émoji si pleine, texte si pleine]
+const FINS = [
+  ['📉', "Ta moyenne est de 0,5. Le conseil de classe t'envoie en cours de rattrapage… jusqu'à tes 40 ans.", '🤓', "Tu es devenu tellement fort que tu corriges les profs. Ils t'ont gentiment demandé de partir."],
+  ['🦗', "Plus personne ne te parle. Même le pigeon de la cour t'ignore.", '🤩', "Tu es si populaire que 200 personnes te suivent partout. Tu t'exiles en Antarctique pour être tranquille."],
+  ['😴', "Tu t'endors en plein contrôle. Tu te réveilles… en juillet.", '🌪️', "Trop d'énergie ! Tu fais 47 fois le tour du collège en courant et tu disparais à l'horizon."],
+  ['📵', "Tes parents confisquent ton téléphone. Pour toujours. Même à 30 ans.", '🥰', "Tes parents t'adorent tellement qu'ils viennent avec toi en classe. Tous les jours."],
+];
+// [perso, nom, situation, [choix gauche, effets], [choix droite, effets]] — effets = [notes, potes, énergie, parents]
+const CARTES = [
+  ['👩‍🏫', 'Prof de maths', "Contrôle surprise demain ! Tu révises ce soir ?", ["Non, jeux vidéo d'abord", [-15, 5, 5, -5]], ['Oui, je révise', [15, -5, -10, 5]]],
+  ['🧑‍🤝‍🧑', 'Ton meilleur pote', "On fait une partie de foot à la récré ?", ['Non, je lis', [5, -10, 5, 0]], ['Grave !', [0, 10, -10, 0]]],
+  ['👩', 'Ta mère', "Range ta chambre. MAINTENANT.", ['Dans 5 minutes…', [0, 0, 5, -15]], ["D'accord…", [0, 0, -10, 10]]],
+  ['🧑‍🍳', 'La dame de la cantine', "Aujourd'hui : épinards ou… épinards ?", ['Je saute le repas', [0, 0, -15, 0]], ['Double épinards ! 💪', [0, -5, 15, 5]]],
+  ['📱', 'Le groupe de la classe', "Quelqu'un a les devoirs d'histoire ?", ['Je fais le mort', [0, -10, 0, 0]], ['J\'envoie les miens', [-5, 15, 0, 0]]],
+  ['🧔', 'Le CPE', "Pourquoi tu cours dans le couloir ?", ["C'était une urgence toilettes", [0, 5, 0, -5]], ['Pardon, je ne le ferai plus', [0, -5, 0, 5]]],
+  ['🎮', 'Ta console', "Il est 23 h. Encore une partie ?", ['Non, dodo', [5, -5, 15, 5]], ['Juste une… (ou dix)', [-5, 10, -20, -10]]],
+  ['👨', 'Ton père', "Tu veux venir faire du vélo avec moi ?", ["J'ai la flemme", [0, 0, 5, -10]], ['Allez !', [0, 0, -10, 15]]],
+  ['👩‍🏫', 'Prof de français', "Qui veut lire son poème devant la classe ?", ['Je me cache sous la table', [-5, 0, 0, 0]], ['Moi !', [10, -5, -5, 0]]],
+  ['🧒', 'Ton petit frère', "Il a pris ta manette sans demander.", ['Je crie très fort', [0, 0, 5, -15]], ['Je lui apprends à jouer', [0, 0, -5, 15]]],
+  ['🏃', 'Prof de sport', "Aujourd'hui : 12 tours de stade.", ["J'ai mal au genou… 🤕", [0, -5, 10, 0]], ["C'est parti !", [0, 5, -20, 0]]],
+  ['🙋', 'Le nouveau de la classe', "Il est tout seul à la récré.", ['Je reste avec ma bande', [0, 0, 5, 0]], ['Je vais lui parler', [0, 10, -5, 0]]],
+  ['📚', 'Ton cahier de texte', "Un exposé à rendre demain. Tu ne l'as pas commencé.", ['Je copie Wikipédia', [-10, 0, 5, 0]], ['Nuit blanche !', [15, 0, -25, 0]]],
+  ['👩', 'Ta mère', "Tu as eu combien au contrôle ?", ['On n\'a pas encore les notes…', [0, 0, 0, -10]], ['Je dis la vérité', [0, 0, -5, 10]]],
+  ['🐱', 'Ton chat', "Il s'est endormi sur ton cahier de maths.", ['Je le pousse', [5, 0, 0, 0]], ["Je n'ose pas le réveiller", [-10, 0, 10, 0]]],
+  ['🗳️', 'Le prof principal', "Tu veux te présenter comme délégué ?", ['Non, trop de pression', [0, -5, 5, 0]], ['Votez pour moi !', [5, 15, -15, 5]]],
+  ['🧔', 'Le CPE', "Ton téléphone a sonné en cours. Je le confisque.", ['Je négocie', [0, 5, -5, -10]], ['Je le donne', [0, -5, 0, 5]]],
+  ['🎂', 'Un pote', "Soirée d'anniversaire samedi… mais contrôle lundi.", ['Je révise', [10, -15, 0, 5]], ['Je fais la fête', [-10, 15, -10, 0]]],
+  ['👨', 'Ton père', "On regarde un documentaire sur les tracteurs ensemble ?", ['Non merci', [0, 0, 0, -10]], ['…D\'accord', [5, 0, -10, 15]]],
+  ['🤧', 'Ton nez', "Tu te réveilles avec un gros rhume.", ['Je vais en cours quand même', [5, 0, -15, 0]], ['Je reste au lit', [-10, 0, 20, -5]]],
+  ['🍫', 'Le distributeur', "Il a avalé ta pièce sans rien donner.", ['Je le secoue très fort', [0, 10, 5, -10]], ['Je laisse tomber', [0, 0, -5, 0]]],
+  ['👵', 'Ta grand-mère', "Elle t'a envoyé 14 messages vocaux de 3 minutes.", ['Je les écouterai… un jour', [0, 0, 0, -10]], ["Je l'appelle", [0, 0, -5, 15]]],
+  ['🧑‍🤝‍🧑', 'Ton meilleur pote', "Il a eu 3/20 et il est triste.", ['Je me moque un peu', [0, -15, 0, 0]], ["Je l'aide à réviser", [5, 10, -10, 0]]],
+  ['🚌', 'Le bus', "Tu as raté le bus !", ['Je cours derrière', [0, 5, -20, 0]], ["J'appelle mes parents", [0, 0, 0, -15]]],
+  ['💂', "Prof d'anglais", "Who wants to speak English today?", ['Je baisse la tête', [-5, 0, 0, 0]], ['Me! Me! Me!', [10, -5, -5, 0]]],
+  ['👾', 'Le jeu que tu attends', "Il sort ce soir à minuit !", ['Je dormirai', [0, -5, 10, 0]], ['Je reste éveillé', [-5, 10, -20, -5]]],
+  ['🍽️', 'Ta mère', "Tu peux vider le lave-vaisselle ?", ["J'ai des devoirs (c'est faux)", [0, 0, 5, -10]], ['Bien sûr', [0, 0, -5, 10]]],
+  ['🏆', 'Le prof de maths', "Tu veux participer au concours de maths ?", ['Non merci', [0, 0, 5, -5]], ['Oui !', [15, -5, -10, 10]]],
+  ['🎸', 'Ta bande', "On monte un groupe de musique ! Tu joues de quoi ?", ['Je serai le manager', [0, 5, 5, 0]], ['De la batterie !', [0, 15, -10, -10]]],
+  ['⏰', 'Ton réveil', "Il n'a pas sonné. Il est 7 h 55 !", ['Je fonce sans déjeuner', [0, 0, -15, 0]], ['Je prends mon temps', [-5, 0, 10, -10]]],
+  ['🍕', 'Ton père', "Pizza ou gratin de chou-fleur ce soir ?", ['Pizza !', [0, 0, 10, -5]], ['Gratin… pour te faire plaisir', [0, 0, -5, 10]]],
+  ['📸', 'La photo de classe', "C'est aujourd'hui et tu as une tache sur ton t-shirt.", ['Je mets ma capuche', [0, -5, 0, -5]], ['Je souris quand même', [0, 5, 0, 5]]],
+  ['🕊️', 'Une rumeur', "Tout le monde dit que tu as peur des pigeons.", ['Je démens tout !', [0, -5, -5, 0]], ['Oui, et alors ?', [0, 10, 0, 0]]],
+  ['📝', 'Ton carnet', "Il doit être signé… et il y a un mot du prof dedans.", ["J'imite la signature", [0, 5, 0, -20]], ['Je le montre à mes parents', [0, 0, -5, -5]]],
+  ['🧪', 'Prof de physique', "Qui veut faire l'expérience devant tout le monde ?", ['Pas moi', [-5, 0, 0, 0]], ["Moi ! (pourvu que ça n'explose pas)", [10, 5, -5, 0]]],
+  ['🌧️', 'La récré', "Il pleut des cordes. Que fais-tu ?", ['Foot sous la pluie', [0, 10, -10, -5]], ['Je reste au sec', [0, -5, 5, 0]]],
+  ['🤫', 'Ton voisin', "Il te demande la réponse en plein contrôle.", ['Je fais non de la tête', [5, -10, 0, 0]], ['Je lui montre ma copie', [-10, 10, 0, -5]]],
+  ['🛋️', 'Le mercredi après-midi', "Tu fais quoi ?", ['Sieste de 4 heures', [0, -5, 20, -5]], ['Sortie avec les potes', [0, 10, -10, 0]]],
+];
+const JOURS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi'];
+const PAR_JOUR = 4;
+
+let valeurs, decisions, pioche, carte, occupe = false, record = 0;
+try { record = Number(localStorage.getItem('natx-college-record')) || 0; } catch {}
+
+const jaugesEl = document.getElementById('jauges');
+const tubes = [], niveaux = [], points = [];
+JAUGES.forEach(([ic, nom, c]) => {
+  const j = document.createElement('div');
+  j.className = 'jauge';
+  j.innerHTML = `<i class="point"></i><span class="tube"><span class="niveau" style="--c:${c}"></span></span><span class="ic">${ic}</span><small>${nom}</small>`;
+  jaugesEl.appendChild(j);
+  points.push(j.querySelector('.point'));
+  tubes.push(j.querySelector('.tube'));
+  niveaux.push(j.querySelector('.niveau'));
+});
+
+const carteEl = document.getElementById('carte');
+const choixCarte = document.getElementById('choix-carte');
+const boutons = [document.getElementById('b0'), document.getElementById('b1')];
+
+function melanger(l) {
+  for (let i = l.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [l[i], l[j]] = [l[j], l[i]]; }
+  return l;
+}
+
+let minuteurToast;
+function toast(texte) {
+  const t = document.getElementById('toast');
+  t.textContent = texte;
+  t.classList.add('visible');
+  clearTimeout(minuteurToast);
+  minuteurToast = setTimeout(() => t.classList.remove('visible'), 2400);
+}
+
+function afficherJauges() {
+  valeurs.forEach((v, i) => {
+    niveaux[i].style.height = v + '%';
+    tubes[i].classList.toggle('danger', v <= 15 || v >= 85);
+  });
+}
+
+// Les points montrent quelles jauges vont bouger (gros point = gros changement)
+function apercu(cote) {
+  points.forEach((p, i) => {
+    const e = cote === null ? 0 : Math.abs(carte[3 + cote][1][i]);
+    p.classList.toggle('visible', e > 0);
+    p.style.setProperty('--t', e >= 15 ? 1.4 : .8);
+  });
+  choixCarte.style.opacity = cote === null ? 0 : 1;
+  if (cote !== null) choixCarte.textContent = (cote ? '➡ ' : '⬅ ') + carte[3 + cote][0];
+}
+
+function afficherJour() {
+  const j = Math.floor(decisions / PAR_JOUR);
+  document.getElementById('jour').textContent = `Jour ${j + 1} · ${JOURS[j % 5]}`;
+}
+
+function prochaine() {
+  if (!pioche.length) pioche = melanger([...CARTES.keys()]);
+  carte = CARTES[pioche.pop()];
+  document.getElementById('perso').textContent = carte[0];
+  document.getElementById('nom').textContent = carte[1];
+  document.getElementById('texte').textContent = carte[2];
+  boutons[0].textContent = '⬅ ' + carte[3][0];
+  boutons[1].textContent = carte[4][0] + ' ➡';
+  apercu(null);
+  carteEl.classList.add('glisse');
+  carteEl.style.transform = 'scale(.85)';
+  carteEl.style.opacity = 0;
+  void carteEl.offsetWidth;
+  carteEl.classList.remove('glisse');
+  carteEl.style.transform = '';
+  carteEl.style.opacity = 1;
+  afficherJour();
+  occupe = false;
+}
+
+function choisir(cote) {
+  if (occupe) return;
+  occupe = true;
+  const effets = carte[3 + cote][1];
+  valeurs = valeurs.map((v, i) => Math.max(0, Math.min(100, v + effets[i])));
+  decisions++;
+  carteEl.style.transform = `translateX(${cote ? 520 : -520}px) rotate(${cote ? 30 : -30}deg)`;
+  carteEl.style.opacity = 0;
+  apercu(null);
+  // Chaque fin de semaine : week-end, on récupère de l'énergie
+  if (decisions % (PAR_JOUR * 5) === 0) {
+    valeurs[2] = Math.min(100, valeurs[2] + 15);
+    toast('🎉 Week-end ! Énergie +15');
+  }
+  afficherJauges();
+  const k = valeurs.findIndex(v => v <= 0 || v >= 100);
+  setTimeout(() => k >= 0 ? finir(k, valeurs[k] >= 100) : prochaine(), k >= 0 ? 650 : 330);
+}
+
+function finir(k, haut) {
+  const jours = Math.floor(decisions / PAR_JOUR);
+  const nouveau = jours > record;
+  if (nouveau) {
+    record = jours;
+    try { localStorage.setItem('natx-college-record', record); } catch {}
+  }
+  document.getElementById('fin-emoji').textContent = FINS[k][haut ? 2 : 0];
+  document.getElementById('fin-texte').textContent = FINS[k][haut ? 3 : 1];
+  document.getElementById('fin-score').textContent = `Tu as survécu ${jours} jour${jours > 1 ? 's' : ''} (${decisions} décisions).`;
+  document.getElementById('fin-record').textContent = nouveau && jours > 0 ? '🏆 Nouveau record !' : `Record : ${record} jour${record > 1 ? 's' : ''}`;
+  document.getElementById('jeu').hidden = true;
+  document.getElementById('fin').hidden = false;
+}
+
+function nouvellePartie() {
+  valeurs = [50, 50, 50, 50];
+  decisions = 0;
+  pioche = [];
+  document.getElementById('jeu').hidden = false;
+  document.getElementById('fin').hidden = true;
+  afficherJauges();
+  prochaine();
+}
+
+/* ---------- Faire glisser la carte ---------- */
+let depart = null, dx = 0;
+carteEl.addEventListener('pointerdown', e => {
+  if (occupe) return;
+  depart = e.clientX; dx = 0;
+  carteEl.setPointerCapture(e.pointerId);
+  carteEl.classList.add('glisse');
+});
+carteEl.addEventListener('pointermove', e => {
+  if (depart === null) return;
+  dx = e.clientX - depart;
+  carteEl.style.transform = `translateX(${dx}px) rotate(${dx / 14}deg)`;
+  apercu(Math.abs(dx) > 30 ? (dx > 0 ? 1 : 0) : null);
+});
+function lacher() {
+  if (depart === null) return;
+  depart = null;
+  carteEl.classList.remove('glisse');
+  if (Math.abs(dx) > 90) choisir(dx > 0 ? 1 : 0);
+  else { carteEl.style.transform = ''; apercu(null); }
+}
+carteEl.addEventListener('pointerup', lacher);
+carteEl.addEventListener('pointercancel', lacher);
+
+boutons.forEach((b, i) => {
+  b.addEventListener('click', () => choisir(i));
+  b.addEventListener('pointerenter', () => !occupe && apercu(i));
+  b.addEventListener('pointerleave', () => apercu(null));
+});
+addEventListener('keydown', e => {
+  if (!document.getElementById('fin').hidden) return;
+  if (e.key === 'ArrowLeft') choisir(0);
+  if (e.key === 'ArrowRight') choisir(1);
+});
+document.getElementById('rejouer').addEventListener('click', nouvellePartie);
+
+nouvellePartie();
+</script>
+</body>
+</html>
