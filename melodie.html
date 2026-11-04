@@ -6,6 +6,10 @@
 <title>Boîte à Mélodies · natx.fun</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎹</text></svg>">
 <link rel="stylesheet" href="commun.css">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icone-192.png">
+<meta name="theme-color" content="#fbf7f0">
+<script src="commun.js"></script>
 <style>
   body { background: radial-gradient(ellipse at 50% -10%, #3b2f8f, #120f2e 60%, #0a0820); color: #f4f1ff; min-height: 100vh; }
   .page { max-width: 960px; margin: 0 auto; padding: 72px 16px 40px; text-align: center; }
@@ -36,6 +40,10 @@
   .tempo span { min-width: 2.4em; font-family: var(--titre); }
   .instruments { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
   .astuce { color: #9d97c9; font-size: 14px; margin-top: 24px; }
+  .choix {
+    font: inherit; font-family: var(--titre); font-weight: 600; font-size: 16px; padding: 9px 12px; cursor: pointer;
+    border: 3px solid var(--encre); border-radius: 14px; background: #fff; color: var(--encre); box-shadow: 0 4px 0 #000;
+  }
 </style>
 </head>
 <body>
@@ -49,31 +57,62 @@
   <div class="commandes">
     <button class="btn lecture" id="lecture">▶ Lecture</button>
     <label class="tempo">Tempo <input type="range" id="tempo" min="70" max="170" value="112"> <span id="bpm">112</span></label>
+    <label class="tempo">🔊 <input type="range" id="volume" min="0" max="100" value="70" aria-label="Volume"></label>
   </div>
   <div class="commandes">
     <div class="instruments" id="instruments">
       <button class="btn actif" data-i="doux">🎐 Doux</button>
+      <button class="btn" data-i="piano">🎹 Piano</button>
       <button class="btn" data-i="retro">👾 Rétro</button>
+      <button class="btn" data-i="synthe">🎛️ Synthé</button>
       <button class="btn" data-i="cloche">🔔 Cloche</button>
     </div>
+  </div>
+  <div class="commandes">
+    <select class="choix" id="gamme" aria-label="Gamme">
+      <option value="joyeuse">😊 Gamme joyeuse</option>
+      <option value="mystere">🕵️ Gamme mystère</option>
+      <option value="asie">🏯 Gamme Asie</option>
+    </select>
+    <select class="choix" id="exemples" aria-label="Exemples">
+      <option value="">🎼 Exemples…</option>
+      <option value="joyeuse">Petite balade</option>
+      <option value="mystere">Enquête de nuit</option>
+      <option value="fete">C'est la fête</option>
+    </select>
     <button class="btn" id="hasard">🎲 Hasard</button>
     <button class="btn" id="effacer">🧹 Effacer</button>
     <button class="btn" id="partager">🔗 Partager</button>
   </div>
-  <p class="astuce">Les ronds du bas = la batterie. Barre d'espace = lecture / pause. « Partager » copie un lien vers ta musique.</p>
+  <p class="astuce">Les ronds du bas = la batterie. Espace = lecture / pause · R = hasard · C = effacer.<br>Ta musique est sauvegardée toute seule. « Partager » crée un lien vers elle.</p>
 </main>
 
 <script>
-// Gamme pentatonique : impossible de faire une fausse note
-const NOTES = [659.25, 587.33, 523.25, 440, 392, 329.63, 293.66, 261.63];
+// Gammes à 5 notes : impossible de faire une fausse note
+const GAMMES = {
+  joyeuse: [659.25, 587.33, 523.25, 440, 392, 329.63, 293.66, 261.63],
+  mystere: [698.46, 622.25, 523.25, 466.16, 392, 349.23, 311.13, 261.63],
+  asie: [880, 698.46, 659.25, 523.25, 493.88, 440, 349.23, 329.63],
+};
+let NOTES = GAMMES.joyeuse, gamme = 'joyeuse';
 const COULEURS = ['#ff5d8f', '#ff8a4c', '#ffd23f', '#9be15d', '#3ddc97', '#38bdf8', '#818cf8', '#c084fc'];
 const COULEURS_BATTERIE = ['#f1f5f9', '#cbd5e1', '#94a3b8'];
 const PAS = 16, LIGNES = NOTES.length + 3;
 const INSTRUMENTS = {
   doux: { type: 'sine', duree: .55, vol: .35 },
+  piano: { type: 'triangle', duree: 1, vol: .3, harmonique: .25 },
   retro: { type: 'square', duree: .2, vol: .1 },
+  synthe: { type: 'sawtooth', duree: .4, vol: .1, filtre: 1600 },
   cloche: { type: 'triangle', duree: 1.5, vol: .32 },
 };
+const EXEMPLES = {
+  joyeuse: { gamme: 'joyeuse', bpm: 112, instrument: 'doux', notes: null },
+  mystere: { gamme: 'mystere', bpm: 84, instrument: 'cloche', notes: [[7, 0], [3, 0], [5, 3], [4, 6], [2, 8], [3, 10], [1, 12], [4, 14], [10, 0], [10, 8], [8, 4], [8, 12], [9, 12]] },
+  fete: { gamme: 'joyeuse', bpm: 132, instrument: 'retro', notes: [[5, 0], [4, 2], [2, 4], [4, 6], [3, 8], [2, 10], [1, 12], [0, 14], [7, 0], [7, 4], [6, 8], [6, 12],
+    [10, 0], [10, 4], [10, 8], [10, 12], [9, 4], [9, 12], [8, 1], [8, 3], [8, 5], [8, 7], [8, 9], [8, 11], [8, 13], [8, 15]] },
+};
+let volume = natx.lire('natx-melodie-volume', .7);
+const gainMaitre = () => natx.estMuet() ? 0 : volume * .7;
 const DEMO = [[2, 0], [3, 3], [4, 6], [0, 8], [1, 10], [2, 11], [3, 14], [7, 0], [5, 8],
   [8, 0], [8, 2], [8, 4], [8, 6], [8, 8], [8, 10], [8, 12], [8, 14], [9, 4], [9, 12], [10, 0], [10, 8], [10, 10]];
 
@@ -106,12 +145,12 @@ function audio() {
   ctx = new (window.AudioContext || window.webkitAudioContext)();
   const comp = ctx.createDynamicsCompressor();
   comp.connect(ctx.destination);
-  maitre = ctx.createGain(); maitre.gain.value = .5; maitre.connect(comp);
-  // Petit écho pour un son plus joli
+  maitre = ctx.createGain(); maitre.gain.value = gainMaitre(); maitre.connect(comp);
+  // Petit écho pour un son plus joli (il passe aussi par le volume général)
   echo = ctx.createDelay(1); echo.delayTime.value = .27;
   const retour = ctx.createGain(); retour.gain.value = .3;
   const mix = ctx.createGain(); mix.gain.value = .22;
-  echo.connect(retour); retour.connect(echo); echo.connect(mix); mix.connect(comp);
+  echo.connect(retour); retour.connect(echo); echo.connect(mix); mix.connect(maitre);
   bruit = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
   const d = bruit.getChannelData(0);
   for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
@@ -119,13 +158,26 @@ function audio() {
 
 function note(f, t) {
   const i = INSTRUMENTS[instrument];
-  const o = ctx.createOscillator(), g = ctx.createGain();
-  o.type = i.type; o.frequency.value = f;
+  const g = ctx.createGain();
   g.gain.setValueAtTime(0, t);
   g.gain.linearRampToValueAtTime(i.vol, t + .008);
   g.gain.exponentialRampToValueAtTime(.0001, t + i.duree);
-  o.connect(g); g.connect(maitre); g.connect(echo);
-  o.start(t); o.stop(t + i.duree + .05);
+  let sortie = g;
+  if (i.filtre) {
+    const filtre = ctx.createBiquadFilter();
+    filtre.type = 'lowpass'; filtre.frequency.value = i.filtre;
+    g.connect(filtre);
+    sortie = filtre;
+  }
+  sortie.connect(maitre); sortie.connect(echo);
+  // Le piano ajoute la même note une octave plus haut, plus doucement
+  const oscillateurs = i.harmonique ? [[f, 1], [f * 2, i.harmonique]] : [[f, 1]];
+  for (const [freq, niveau] of oscillateurs) {
+    const o = ctx.createOscillator(), go = ctx.createGain();
+    o.type = i.type; o.frequency.value = freq; go.gain.value = niveau;
+    o.connect(go); go.connect(g);
+    o.start(t); o.stop(t + i.duree + .05);
+  }
 }
 
 function bruitFiltre(t, type, freq, vol, duree) {
@@ -259,19 +311,58 @@ document.getElementById('hasard').addEventListener('click', () => {
 
 // Le lien de partage contient toute la musique (1 ligne = 4 caractères)
 function encoder() {
-  return motif.map(l => parseInt(l.map(b => b ? 1 : 0).join(''), 2).toString(16).padStart(4, '0')).join('') + '-' + bpm + '-' + instrument;
+  return motif.map(l => parseInt(l.map(b => b ? 1 : 0).join(''), 2).toString(16).padStart(4, '0')).join('') + '-' + bpm + '-' + instrument + '-' + gamme;
 }
 function decoder(h) {
-  const [g, b, i] = h.split('-');
+  const [g, b, i, ga] = (h || '').split('-');
   if (!g || g.length !== LIGNES * 4 || /[^0-9a-f]/.test(g)) return false;
   for (let r = 0; r < LIGNES; r++) {
     const n = parseInt(g.substr(r * 4, 4), 16);
     for (let s = 0; s < PAS; s++) motif[r][s] = !!(n & (1 << (15 - s)));
   }
-  if (+b >= 70 && +b <= 170) { bpm = +b; tempo.value = bpm; document.getElementById('bpm').textContent = bpm; }
+  if (+b >= 70 && +b <= 170) changerTempo(+b);
   if (INSTRUMENTS[i]) choisirInstrument(i);
+  choisirGamme(GAMMES[ga] ? ga : 'joyeuse');
   return true;
 }
+
+function changerTempo(v) { bpm = v; tempo.value = v; document.getElementById('bpm').textContent = v; }
+function choisirGamme(nom) { gamme = nom; NOTES = GAMMES[nom]; document.getElementById('gamme').value = nom; }
+document.getElementById('gamme').addEventListener('change', e => choisirGamme(e.target.value));
+
+document.getElementById('exemples').addEventListener('change', e => {
+  const ex = EXEMPLES[e.target.value];
+  if (!ex) return;
+  motif = motif.map(l => l.map(() => false));
+  (ex.notes || DEMO).forEach(([r, s]) => motif[r][s] = true);
+  changerTempo(ex.bpm);
+  choisirInstrument(ex.instrument);
+  choisirGamme(ex.gamme);
+  afficherMotif();
+  e.target.value = '';
+  if (!enLecture) lecture();
+});
+
+const curseurVolume = document.getElementById('volume');
+curseurVolume.value = Math.round(volume * 100);
+curseurVolume.addEventListener('input', () => {
+  volume = curseurVolume.value / 100;
+  natx.ecrire('natx-melodie-volume', volume);
+  if (maitre) maitre.gain.value = gainMaitre();
+});
+document.addEventListener('natx-son', () => { if (maitre) maitre.gain.value = gainMaitre(); });
+
+addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.ctrlKey || e.metaKey) return;
+  const k = e.key.toLowerCase();
+  if (k === 'r') document.getElementById('hasard').click();
+  if (k === 'c') document.getElementById('effacer').click();
+});
+
+// Sauvegarde automatique de ta musique
+const sauver = () => natx.ecrire('natx-melodie', encoder());
+setInterval(sauver, 2000);
+addEventListener('pagehide', sauver);
 
 document.getElementById('partager').addEventListener('click', async e => {
   const b = e.currentTarget;
@@ -281,7 +372,8 @@ document.getElementById('partager').addEventListener('click', async e => {
   setTimeout(() => b.textContent = '🔗 Partager', 2000);
 });
 
-if (!decoder(location.hash.slice(1))) DEMO.forEach(([r, s]) => motif[r][s] = true);
+// Priorité : un lien partagé, sinon ta dernière musique, sinon la démo
+if (!decoder(location.hash.slice(1)) && !decoder(natx.lire('natx-melodie', ''))) DEMO.forEach(([r, s]) => motif[r][s] = true);
 afficherMotif();
 </script>
 </body>

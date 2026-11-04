@@ -6,12 +6,17 @@
 <title>Pouvoirs Nuls · natx.fun</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🦸</text></svg>">
 <link rel="stylesheet" href="commun.css">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icone-192.png">
+<meta name="theme-color" content="#fbf7f0">
+<script src="commun.js"></script>
 <style>
   body { background: #f1ebff; }
   .page { max-width: 680px; margin: 0 auto; padding: 80px 16px 60px; text-align: center; }
   h1 { font-family: var(--titre); font-weight: 700; font-size: clamp(34px, 7vw, 54px); margin: 0; line-height: 1.1; }
   h1 span { color: #7c3aed; }
-  .sous { color: var(--gris); font-size: 18px; margin: 10px 0 34px; }
+  .sous { color: var(--gris); font-size: 18px; margin: 10px 0 8px; }
+  .stats { font-weight: 800; color: #6d28d9; margin: 0 0 26px; font-size: 15px; }
 
   .machine {
     background: #8b5cf6; border: 3px solid var(--encre); border-radius: 24px;
@@ -59,6 +64,7 @@
 <main class="page">
   <h1>Ton super-pouvoir <span>(nul)</span></h1>
   <p class="sous">Chaque super-pouvoir a un petit défaut. Le tien est sûrement pire.</p>
+  <p class="stats" id="stats"></p>
 
   <section class="machine">
     <div class="rouleau"><small>Tu peux…</small><div class="fenetre"><span id="r1">???</span></div></div>
@@ -92,6 +98,9 @@ const pouvoirs = [
   "lire un livre en une seconde", "faire pousser des plantes en claquant des doigts", "voyager dans le temps",
   "ne jamais avoir sommeil", "contrôler l'électricité", "gagner à tous les jeux vidéo",
   "copier le pouvoir des autres", "ouvrir des portails", "sauter jusqu'aux nuages",
+  "parler aux plantes", "te transformer en flaque d'eau", "contrôler tous les pigeons", "faire des bulles de savon géantes",
+  "changer de couleur comme un caméléon", "lire les pensées de ton chien", "transformer l'eau en jus d'orange",
+  "avoir du wifi partout", "deviner le menu de la cantine", "rebondir comme une balle",
 ];
 const defauts = [
   "seulement à 3 cm du sol", "uniquement quand personne ne te regarde", "seulement le mardi entre 14 h et 14 h 05",
@@ -105,6 +114,10 @@ const defauts = [
   "c'est une version d'essai qui expire demain", "un mime te suit partout en imitant tout ce que tu fais",
   "tu dois crier ton nom de héros très fort avant", "seulement sous la pluie", "uniquement le jour de ton anniversaire",
   "tous les chats du quartier te détestent", "ta voix devient celle d'un canard",
+  "uniquement avec les mains mouillées", "tu dois porter un casque de vélo", "ça te fait pousser une moustache",
+  "seulement en chantant faux", "ça ne marche que sur les escargots", "il faut dire « s'il te plaît » trois fois",
+  "seulement pendant les pubs", "tu parles en rimes toute la journée", "ton pied gauche s'endort à chaque fois",
+  "uniquement le 29 février",
 ];
 const titres = ["Capitaine", "Docteur", "Super", "Méga", "L'Incroyable", "Professeur", "Le Grand", "Agent", "Ultra", "Lady", "Sir", "Mister"];
 const noms = ["Chaussette", "Brocoli", "Tartine", "Pigeon", "Cartable", "Raclette", "Trottinette", "Hoquet", "Patate", "Yaourt", "Moustache", "Croissant", "Wifi", "Gomme", "Compas", "Nugget"];
@@ -133,6 +146,7 @@ function rouler(el, valeurs, duree, finale) {
       el.classList.remove('tic');
       void el.offsetWidth;
       el.classList.add('tic');
+      natx.bip(dernier ? 520 : 900 + Math.random() * 200, dernier ? .15 : .03, dernier ? 'triangle' : 'square', .03);
       if (dernier) { fini(); return; }
       delai *= 1.08;
       setTimeout(tour, delai);
@@ -160,17 +174,46 @@ async function lancer() {
   carte.hidden = false;
   texteActuel = `${nom} : ${document.getElementById('phrase').textContent} (natx.fun)`;
 
-  const li = document.createElement('li');
-  li.innerHTML = `<b></b> — <span></span>`;
-  li.querySelector('b').textContent = nom;
-  li.querySelector('span').textContent = document.getElementById('phrase').textContent;
-  liste.prepend(li);
-  while (liste.children.length > 5) liste.lastChild.remove();
-  document.getElementById('historique').hidden = liste.children.length < 2;
+  const phrase = document.getElementById('phrase').textContent;
+  ajouterHistorique(nom, phrase);
+  const anciens = natx.lire('natx-pouvoirs-historique', []);
+  natx.ecrire('natx-pouvoirs-historique', [{ nom, phrase }, ...anciens].slice(0, 5));
+  stats.tirages++;
+  if (legendaire) stats.legendaires++;
+  natx.ecrire('natx-pouvoirs-stats', stats);
+  afficherStats();
+  if (legendaire) { natx.son('tada'); natx.confettis(); } else natx.son('bon');
 
   tirer.disabled = false;
   tirer.textContent = '🎰 Encore un !';
 }
+
+function ajouterHistorique(nom, phrase) {
+  const li = document.createElement('li');
+  li.innerHTML = `<b></b> — <span></span>`;
+  li.querySelector('b').textContent = nom;
+  li.querySelector('span').textContent = phrase;
+  liste.prepend(li);
+  while (liste.children.length > 5) liste.lastChild.remove();
+  document.getElementById('historique').hidden = liste.children.length < 2;
+}
+
+// Compteurs et historique gardés d'une visite à l'autre
+const stats = natx.lire('natx-pouvoirs-stats', { tirages: 0, legendaires: 0 });
+function afficherStats() {
+  document.getElementById('stats').textContent = stats.tirages
+    ? `🎰 ${stats.tirages} pouvoir${stats.tirages > 1 ? 's' : ''} tiré${stats.tirages > 1 ? 's' : ''} · ✨ ${stats.legendaires} légendaire${stats.legendaires > 1 ? 's' : ''}`
+    : 'Astuce : appuie sur Espace pour tirer !';
+}
+afficherStats();
+natx.lire('natx-pouvoirs-historique', []).reverse().forEach(h => ajouterHistorique(h.nom, h.phrase));
+
+addEventListener('keydown', e => {
+  if ((e.code === 'Space' || e.code === 'Enter') && e.target.tagName !== 'BUTTON' && !tirer.disabled) {
+    e.preventDefault();
+    lancer();
+  }
+});
 
 tirer.addEventListener('click', lancer);
 document.getElementById('encore').addEventListener('click', lancer);

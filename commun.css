@@ -22,6 +22,35 @@ body {
 }
 a { color: inherit; }
 button { font: inherit; }
+button, a, input, select, canvas { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+input, select { accent-color: #ff5a36; }
+::selection { background: #ffd23f; color: var(--encre); }
+:focus-visible { outline: 3px solid #ff5a36; outline-offset: 3px; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+}
+
+/* Petits boutons ronds (son, partage, plein écran) en haut à droite des jeux */
+.natx-outils { position: fixed; top: 14px; right: 16px; z-index: 1000; display: flex; gap: 8px; }
+.natx-outils button {
+  width: 38px; height: 38px; border-radius: 50%; padding: 0; display: grid; place-items: center;
+  border: 2px solid var(--encre); background: rgba(255, 255, 255, .92); color: var(--encre);
+  box-shadow: 0 3px 0 var(--encre); font-size: 17px; cursor: pointer; transition: transform .1s;
+}
+.natx-outils button:hover { transform: translateY(-1px); }
+.natx-outils button:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--encre); }
+
+/* Notification commune à toutes les pages */
+.natx-toast {
+  position: fixed; left: 50%; top: 64px; transform: translate(-50%, -260%); z-index: 3000;
+  background: var(--encre); color: #fff; font-family: var(--texte); font-weight: 800; font-size: 16px;
+  padding: 10px 18px; border-radius: 14px; box-shadow: 0 6px 20px rgba(0, 0, 0, .25);
+  max-width: calc(100% - 32px); text-align: center; pointer-events: none;
+  transition: transform .35s cubic-bezier(.3, 1.4, .5, 1);
+}
+.natx-toast.visible { transform: translate(-50%, 0); }
+.natx-confetti { position: fixed; top: -20px; width: 10px; height: 14px; z-index: 2900; pointer-events: none; animation: natx-tombe linear forwards; }
+@keyframes natx-tombe { to { transform: translateY(110vh) rotate(720deg); } }
 
 /* Petit lien « retour à l'accueil » en haut à gauche de chaque jeu */
 .retour {

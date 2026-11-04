@@ -6,6 +6,10 @@
 <title>L'Empire de la Patate · natx.fun</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🥔</text></svg>">
 <link rel="stylesheet" href="commun.css">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icone-192.png">
+<meta name="theme-color" content="#fbf7f0">
+<script src="commun.js"></script>
 <style>
   body { background: #fff4df; background-image: radial-gradient(rgba(120, 72, 20, .09) 1.5px, transparent 1.6px); background-size: 24px 24px; }
   .jeu {
@@ -57,6 +61,17 @@
   .achat small { color: var(--gris); display: block; font-size: 13.5px; margin: 1px 0 3px; }
   .prix { font-weight: 800; white-space: nowrap; }
   .nb { font-family: var(--titre); font-weight: 700; font-size: 30px; color: #cdb48c; min-width: 1.2em; text-align: right; }
+  .petit-titre { font-size: 22px !important; margin-top: 22px !important; }
+  .petit-titre span { font-size: 16px; color: var(--gris); }
+  .succes { display: grid; grid-template-columns: repeat(auto-fill, minmax(48px, 1fr)); gap: 8px; }
+  .badge {
+    aspect-ratio: 1; display: grid; place-items: center; font-size: 26px; background: #fff;
+    border: 2px solid var(--encre); border-radius: 12px; box-shadow: 0 3px 0 var(--encre); cursor: help;
+  }
+  .badge.bloque { filter: grayscale(1); opacity: .35; }
+  .stats { margin-top: 18px; background: #fff; border: 2px solid var(--encre); border-radius: 14px; padding: 10px 14px; }
+  .stats summary { font-family: var(--titre); font-weight: 600; font-size: 18px; cursor: pointer; }
+  .stats ul { margin: 10px 0 0; padding-left: 20px; line-height: 1.7; font-weight: 700; }
   .recommencer { background: none; border: 0; color: var(--gris); text-decoration: underline; cursor: pointer; margin-top: 8px; font-size: 14px; }
 
   .plus {
@@ -106,10 +121,17 @@
       <span class="quantite">
         <button class="btn actif" data-q="1">×1</button>
         <button class="btn" data-q="10">×10</button>
+        <button class="btn" data-q="max">Max</button>
       </span>
     </h2>
     <button class="achat special" id="amelio"><span class="ic"></span><span><b></b><small></small><span class="prix"></span></span><span></span></button>
     <div id="liste"></div>
+    <h2 class="petit-titre">🏅 Succès <span id="nb-succes"></span></h2>
+    <div class="succes" id="succes"></div>
+    <details class="stats">
+      <summary>📊 Statistiques</summary>
+      <ul id="stats"></ul>
+    </details>
     <button class="recommencer" id="recommencer">Recommencer à zéro</button>
   </section>
 </main>
@@ -151,7 +173,24 @@ const NOUVELLES = [
 ];
 const PALIERS = [100, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9, 1e10, 1e11, 1e12];
 
-const etat = { patates: 0, total: 0, nb: {}, clic: 0, palier: 0, t: Date.now() };
+const SUCCES = [
+  ['clic1', '👆', 'Premier clic', e => e.clics >= 1],
+  ['clic100', '🖱️', '100 clics', e => e.clics >= 100],
+  ['clic1000', '💪', "Doigt d'acier : 1 000 clics", e => e.clics >= 1000],
+  ['p1k', '🥔', '1 000 patates récoltées', e => e.total >= 1e3],
+  ['p1m', '💰', 'Millionnaire de la patate', e => e.total >= 1e6],
+  ['p1b', '🌍', 'Milliardaire de la patate', e => e.total >= 1e9],
+  ['mamie10', '👵', 'Club des mamies : 10 mamies', e => (e.nb.mamie || 0) >= 10],
+  ['fermier25', '🧑‍🌾', 'Grande ferme : 25 fermiers', e => (e.nb.fermier || 0) >= 25],
+  ['usine', '🏭', 'Industriel : une usine à frites', e => (e.nb.usine || 0) >= 1],
+  ['fusee', '🚀', 'Patate spatiale : une fusée', e => (e.nb.fusee || 0) >= 1],
+  ['sorcier', '🧙', 'Abracapatata : le Grand Sorcier', e => (e.nb.sorcier || 0) >= 1],
+  ['doree', '✨', "Chercheur d'or : une patate dorée", e => e.dorees >= 1],
+  ['doree10', '🌟', "Collectionneur : 10 patates dorées", e => e.dorees >= 10],
+  ['pps100', '⚡', 'Production de masse : 100 par seconde', e => ppsBase() >= 100],
+  ['main', '✋', 'Toutes les améliorations de clic', e => e.clic >= AMELIORATIONS.length],
+];
+const etat = { patates: 0, total: 0, nb: {}, clic: 0, palier: 0, t: Date.now(), clics: 0, dorees: 0, succes: [], temps: 0 };
 let qte = 1, frenesie = 0, remiseAZero = false;
 
 function charger() {
@@ -177,7 +216,13 @@ function ppsBase() { return BATIMENTS.reduce((s, b) => s + (etat.nb[b.id] || 0) 
 function pps() { return ppsBase() * (Date.now() < frenesie ? 5 : 1); }
 function valeurClic() { return 2 ** etat.clic + ppsBase() * .02 * etat.clic; }
 // Chaque bâtiment coûte 15 % de plus que le précédent
-function prix(b, n = qte) { return b.prix * 1.15 ** (etat.nb[b.id] || 0) * (1.15 ** n - 1) / .15; }
+function prix(b, n = quantite(b)) { return b.prix * 1.15 ** (etat.nb[b.id] || 0) * (1.15 ** n - 1) / .15; }
+// En mode « Max », on achète autant qu'on peut se le permettre
+function quantite(b) {
+  if (qte !== 'max') return qte;
+  const base = b.prix * 1.15 ** (etat.nb[b.id] || 0);
+  return Math.max(1, Math.floor(Math.log(1 + etat.patates * .15 / base) / Math.log(1.15)));
+}
 function gagner(n) { etat.patates += n; etat.total += n; }
 
 let minuteurToast;
@@ -196,10 +241,11 @@ const boutons = BATIMENTS.map(b => {
   el.className = 'achat';
   el.innerHTML = '<span class="ic"></span><span><b></b><small></small><span class="prix"></span></span><span class="nb"></span>';
   el.addEventListener('click', () => {
-    const p = prix(b);
+    const n = quantite(b), p = prix(b, n);
     if (etat.patates < p) return;
     etat.patates -= p;
-    etat.nb[b.id] = (etat.nb[b.id] || 0) + qte;
+    etat.nb[b.id] = (etat.nb[b.id] || 0) + n;
+    natx.bip(700, .08, 'triangle', .07, 1000);
     maj();
   });
   liste.appendChild(el);
@@ -217,7 +263,7 @@ amelio.addEventListener('click', () => {
 });
 
 document.querySelectorAll('.quantite .btn').forEach(b => b.addEventListener('click', () => {
-  qte = +b.dataset.q;
+  qte = b.dataset.q === 'max' ? 'max' : +b.dataset.q;
   document.querySelectorAll('.quantite .btn').forEach(x => x.classList.toggle('actif', x === b));
   maj();
 }));
@@ -239,7 +285,8 @@ function maj() {
     el.querySelector('.ic').textContent = connu ? b.e : '❔';
     el.querySelector('b').textContent = connu ? b.nom : '???';
     el.querySelector('small').textContent = connu ? `${b.txt} +${fmt(b.pps)}/s chacun.` : 'Récolte encore un peu pour le découvrir…';
-    el.querySelector('.prix').textContent = '🥔 ' + fmt(prix(b)) + (qte > 1 ? ` (×${qte})` : '');
+    const combien = quantite(b);
+    el.querySelector('.prix').textContent = '🥔 ' + fmt(prix(b, combien)) + (combien > 1 ? ` (×${combien})` : '');
     el.querySelector('.nb').textContent = n || '';
     el.disabled = !connu || etat.patates < prix(b);
   });
@@ -258,6 +305,45 @@ function maj() {
     toast(`🎉 ${fmt(PALIERS[etat.palier])} patates récoltées au total !`);
     etat.palier++;
   }
+
+  // Succès
+  for (const [id, , nom, test] of SUCCES) {
+    if (!etat.succes.includes(id) && test(etat)) {
+      etat.succes.push(id);
+      toast(`🏅 Succès débloqué : ${nom} !`);
+      natx.son('tada');
+      afficherSucces();
+    }
+  }
+
+  const titre = `🥔 ${fmt(p)} · L'Empire de la Patate`;
+  if (document.title !== titre) document.title = titre;
+}
+
+const succesEl = document.getElementById('succes');
+function afficherSucces() {
+  succesEl.replaceChildren(...SUCCES.map(([id, e, nom]) => {
+    const ok = etat.succes.includes(id);
+    const d = document.createElement('span');
+    d.className = 'badge' + (ok ? '' : ' bloque');
+    d.textContent = ok ? e : '❔';
+    d.title = ok ? nom : 'Succès caché… continue à jouer !';
+    return d;
+  }));
+  document.getElementById('nb-succes').textContent = `${etat.succes.length} / ${SUCCES.length}`;
+}
+
+function afficherStats() {
+  const batiments = Object.values(etat.nb).reduce((s, n) => s + n, 0);
+  const minutes = Math.floor(etat.temps / 60);
+  document.getElementById('stats').innerHTML = [
+    `🖱️ Clics : ${fmt(etat.clics)}`,
+    `🥔 Patates récoltées en tout : ${fmt(etat.total)}`,
+    `🏗️ Bâtiments achetés : ${fmt(batiments)}`,
+    `✨ Patates dorées attrapées : ${etat.dorees}`,
+    `🏅 Succès : ${etat.succes.length} / ${SUCCES.length}`,
+    `⏱️ Temps de jeu : ${minutes >= 60 ? Math.floor(minutes / 60) + ' h ' + (minutes % 60) + ' min' : minutes + ' min'}`,
+  ].map(l => `<li>${l}</li>`).join('');
 }
 
 /* ---------- La grosse patate ---------- */
@@ -265,6 +351,8 @@ const patate = document.getElementById('patate');
 patate.addEventListener('click', e => {
   const v = valeurClic();
   gagner(v);
+  etat.clics++;
+  natx.son('pop');
   let x = e.clientX, y = e.clientY;
   if (!e.detail) { const r = patate.getBoundingClientRect(); x = r.left + r.width / 2; y = r.top + r.height / 2; }
   const plus = document.createElement('span');
@@ -302,6 +390,7 @@ function apparaitre() {
   d.addEventListener('click', () => {
     clearTimeout(fin);
     d.remove();
+    etat.dorees++;
     if (Math.random() < .5) {
       const g = Math.max(ppsBase() * 120, valeurClic() * 40, 50);
       gagner(g);
@@ -346,9 +435,20 @@ let dernier = performance.now();
 setInterval(() => {
   const maintenant = performance.now();
   gagner(pps() * (maintenant - dernier) / 1000);
+  etat.temps += (maintenant - dernier) / 1000;
   dernier = maintenant;
   maj();
 }, 100);
+afficherSucces();
+afficherStats();
+setInterval(afficherStats, 1000);
+
+// Espace = récolter (sans répétition automatique, pas de triche !)
+addEventListener('keydown', e => {
+  if (e.code !== 'Space' || e.repeat) return;
+  e.preventDefault();
+  patate.click();
+});
 setInterval(sauver, 5000);
 addEventListener('pagehide', sauver);
 programmerDoree(true);

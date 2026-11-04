@@ -6,12 +6,16 @@
 <title>La Boîte à Sable · natx.fun</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏜️</text></svg>">
 <link rel="stylesheet" href="commun.css">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icone-192.png">
+<meta name="theme-color" content="#fbf7f0">
+<script src="commun.js"></script>
 <style>
   html, body { height: 100%; overflow: hidden; }
   body { background: #16131f; color: #fff; touch-action: none; user-select: none; }
   canvas { position: fixed; top: 0; left: 0; image-rendering: pixelated; cursor: crosshair; }
   .astuce {
-    position: fixed; top: 18px; left: 0; right: 0; margin: 0; padding: 0 140px; text-align: center; pointer-events: none;
+    position: fixed; top: 18px; left: 0; right: 0; margin: 0; padding: 0 170px; text-align: center; pointer-events: none;
     font-family: var(--titre); font-weight: 600; font-size: clamp(14px, 2.4vw, 19px); color: #e9e4ff; transition: opacity .4s;
   }
   .barre {
@@ -43,12 +47,14 @@
   <button class="outil actif" data-r="4" title="Pinceau moyen">●</button>
   <button class="outil" data-r="8" title="Gros pinceau">⬤</button>
   <span class="sep"></span>
-  <button class="outil" id="pause" title="Pause">⏸</button>
+  <button class="outil" id="pause" title="Pause (Espace)">⏸</button>
+  <button class="outil" id="pluie" title="Pluie">🌧️</button>
+  <button class="outil" id="photo" title="Enregistrer l'image">📸</button>
   <button class="outil" id="vider" title="Tout effacer">🧹</button>
 </nav>
 
 <script>
-const VIDE = 0, SABLE = 1, EAU = 2, PIERRE = 3, FEU = 4, BOIS = 5, PLANTE = 6, LAVE = 7, VAPEUR = 8, HUILE = 9, FUMEE = 10, BRAISE = 11, GOMME = 99;
+const VIDE = 0, SABLE = 1, EAU = 2, PIERRE = 3, FEU = 4, BOIS = 5, PLANTE = 6, LAVE = 7, VAPEUR = 8, HUILE = 9, FUMEE = 10, BRAISE = 11, GLACE = 12, ACIDE = 13, GOMME = 99;
 const COULEURS = {
   [SABLE]: ['#e6c36b', '#dcb55c', '#eccd7d', '#d4ad50'],
   [EAU]: ['#3b82f6', '#3a7ef0', '#4189f8', '#3578e8'],
@@ -61,8 +67,10 @@ const COULEURS = {
   [HUILE]: ['#7c5a2a', '#6e4f24', '#87642f', '#5f441f'],
   [FUMEE]: ['#3f3f4a', '#474752', '#383842', '#50505c'],
   [BRAISE]: ['#ff7b00', '#e05a00', '#ffa31a', '#c94a00'],
+  [GLACE]: ['#bfe9ff', '#a8dcf5', '#d4f1ff', '#9fd3ee'],
+  [ACIDE]: ['#c6f432', '#b5e61d', '#d4fa5a', '#a3d90f'],
 };
-const PALETTE = [[SABLE, 'Sable'], [EAU, 'Eau'], [PIERRE, 'Pierre'], [BOIS, 'Bois'], [PLANTE, 'Plante'], [FEU, 'Feu'], [LAVE, 'Lave'], [HUILE, 'Huile'], [GOMME, 'Gomme']];
+const PALETTE = [[SABLE, 'Sable'], [EAU, 'Eau'], [PIERRE, 'Pierre'], [BOIS, 'Bois'], [PLANTE, 'Plante'], [FEU, 'Feu'], [LAVE, 'Lave'], [HUILE, 'Huile'], [GLACE, 'Glace'], [ACIDE, 'Acide'], [GOMME, 'Gomme']];
 const ASTUCES = [
   "Le feu brûle le bois, les plantes et l'huile.",
   "Les plantes poussent quand elles touchent de l'eau.",
@@ -71,11 +79,14 @@ const ASTUCES = [
   "L'huile flotte sur l'eau… et brûle très bien.",
   "Le sable coule au fond de l'eau.",
   "Construis un barrage en pierre et remplis-le d'eau !",
+  "La glace gèle l'eau autour d'elle… et fond près du feu.",
+  "L'acide ronge presque tout. Même la pierre, tout doucement.",
+  "Touches 1 à 0 pour choisir une matière, clic droit pour gommer.",
 ];
 // Densité : un élément lourd passe sous un élément plus léger. 255 = ne bouge jamais.
 const DENS = new Uint8Array(16);
-DENS[VAPEUR] = DENS[FUMEE] = DENS[FEU] = 1; DENS[HUILE] = 5; DENS[EAU] = 6; DENS[LAVE] = 8; DENS[SABLE] = 9;
-DENS[PIERRE] = DENS[BOIS] = DENS[PLANTE] = DENS[BRAISE] = 255;
+DENS[VAPEUR] = DENS[FUMEE] = DENS[FEU] = 1; DENS[HUILE] = 5; DENS[EAU] = 6; DENS[ACIDE] = 7; DENS[LAVE] = 8; DENS[SABLE] = 9;
+DENS[PIERRE] = DENS[BOIS] = DENS[PLANTE] = DENS[BRAISE] = DENS[GLACE] = 255;
 const DX = [1, -1, 0, 0], DY = [0, 0, 1, -1];
 const TAILLE = innerWidth < 640 ? 3 : 4;
 
@@ -84,7 +95,7 @@ function abgr(hex) {
   return ((255 << 24) | ((n & 255) << 16) | (((n >> 8) & 255) << 8) | (n >> 16)) >>> 0;
 }
 const FOND = abgr('#16131f');
-const PAL = new Uint32Array(12 * 4);
+const PAL = new Uint32Array(16 * 4);
 for (const [m, liste] of Object.entries(COULEURS)) liste.forEach((c, k) => PAL[m * 4 + k] = abgr(c));
 
 const toile = document.getElementById('toile');
@@ -220,9 +231,35 @@ function etape() {
         case BRAISE: braise(x, y, i); break;
         case PLANTE: plante(x, y, i); break;
         case VAPEUR: case FUMEE: gaz(x, y, i, m); break;
+        case GLACE: glace(x, y, i); break;
+        case ACIDE: acide(x, y, i); break;
       }
     }
   }
+}
+
+// La glace gèle doucement l'eau qu'elle touche, et fond près de la chaleur
+function glace(x, y, i) {
+  if (R() > .3) return;
+  const k = R() * 4 | 0, nx = x + DX[k], ny = y + DY[k];
+  if (nx < 0 || nx >= L || ny < 0 || ny >= H) return;
+  const n = nx + ny * L, c = t[n];
+  if (c === EAU && R() < .1) poser(n, GLACE, 0);
+  else if (c === FEU || c === LAVE || c === BRAISE) poser(i, EAU, 0);
+}
+
+// L'acide ronge ce qu'il touche (et s'use en le faisant) ; l'eau le dilue
+function acide(x, y, i) {
+  const k = R() * 4 | 0, nx = x + DX[k], ny = y + DY[k];
+  if (nx >= 0 && nx < L && ny >= 0 && ny < H) {
+    const n = nx + ny * L, c = t[n];
+    if (c === EAU) { if (R() < .02) poser(i, EAU, 0); }
+    else if (c !== VIDE && c !== ACIDE && c !== FUMEE && c !== VAPEUR && c !== FEU && (c !== PIERRE || R() < .05) && R() < .2) {
+      if (R() < .3) poser(n, FUMEE, 30); else t[n] = VIDE;
+      if (R() < .25) { t[i] = VIDE; return; }
+    }
+  }
+  liquide(x, y, i, ACIDE, 2);
 }
 
 function rendre() {
@@ -238,26 +275,29 @@ function rendre() {
 }
 
 /* ---------- Pinceau ---------- */
-let matiere = SABLE, rayon = 4, appui = false, cx = 0, cy = 0;
+let matiere = SABLE, rayon = 4, appui = false, cx = 0, cy = 0, gommeClicDroit = false, pluie = false;
 function peindre(x0, y0) {
+  const m = gommeClicDroit ? GOMME : matiere;
   for (let dy = -rayon; dy <= rayon; dy++) for (let dx = -rayon; dx <= rayon; dx++) {
     if (dx * dx + dy * dy > rayon * rayon) continue;
     const x = x0 + dx, y = y0 + dy;
     if (x < 0 || x >= L || y < 0 || y >= H) continue;
     const i = x + y * L;
-    if (matiere === GOMME) { t[i] = VIDE; continue; }
+    if (m === GOMME) { t[i] = VIDE; continue; }
     if (t[i] !== VIDE) continue;
-    const solide = matiere === PIERRE || matiere === BOIS || matiere === PLANTE;
+    const solide = m === PIERRE || m === BOIS || m === PLANTE || m === GLACE;
     if (!solide && R() > .45) continue;
-    poser(i, matiere, matiere === FEU ? 30 + R() * 50 : 0);
+    poser(i, m, m === FEU ? 30 + R() * 50 : 0);
   }
 }
 function cellule(e) {
   const r = toile.getBoundingClientRect();
   return [Math.floor((e.clientX - r.left) / TAILLE), Math.floor((e.clientY - r.top) / TAILLE)];
 }
+toile.addEventListener('contextmenu', e => e.preventDefault());
 toile.addEventListener('pointerdown', e => {
   appui = true;
+  gommeClicDroit = e.button === 2;
   [cx, cy] = cellule(e);
   peindre(cx, cy);
   toile.setPointerCapture(e.pointerId);
@@ -294,6 +334,28 @@ document.getElementById('pause').addEventListener('click', e => {
   e.currentTarget.classList.toggle('actif', pause);
 });
 document.getElementById('vider').addEventListener('click', () => t.fill(VIDE));
+document.getElementById('pluie').addEventListener('click', e => {
+  pluie = !pluie;
+  e.currentTarget.classList.toggle('actif', pluie);
+});
+document.getElementById('photo').addEventListener('click', () => {
+  toile.toBlob(blob => {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'boite-a-sable.png';
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+    natx.son('bon');
+    natx.toast('📸 Image enregistrée !');
+  });
+});
+
+// Raccourcis : 1 à 0 = matières, Espace = pause
+addEventListener('keydown', e => {
+  if (e.code === 'Space') { e.preventDefault(); document.getElementById('pause').click(); return; }
+  const n = '1234567890'.indexOf(e.key);
+  if (n >= 0 && n < PALETTE.length) conteneur.children[n].click();
+});
 
 let astuce = 0;
 setInterval(() => {
@@ -312,6 +374,12 @@ for (let x = 0; x < L; x++) {
 
 function boucle() {
   if (appui) peindre(cx, cy);
+  if (pluie && !pause) {
+    for (let k = 0; k < L / 40; k++) {
+      const x = R() * L | 0;
+      if (t[x] === VIDE) poser(x, EAU, 0);
+    }
+  }
   if (!pause) etape();
   rendre();
   requestAnimationFrame(boucle);

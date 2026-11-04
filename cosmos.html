@@ -6,6 +6,10 @@
 <title>Mini Cosmos · natx.fun</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🪐</text></svg>">
 <link rel="stylesheet" href="commun.css">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icone-192.png">
+<meta name="theme-color" content="#fbf7f0">
+<script src="commun.js"></script>
 <style>
   html, body { height: 100%; overflow: hidden; }
   body {
@@ -17,7 +21,7 @@
   }
   canvas { position: fixed; inset: 0; width: 100%; height: 100%; cursor: crosshair; }
   .astuce {
-    position: fixed; top: 18px; left: 0; right: 0; margin: 0; padding: 0 140px; text-align: center;
+    position: fixed; top: 18px; left: 0; right: 0; margin: 0; padding: 0 170px; text-align: center;
     font-family: var(--titre); font-weight: 600; font-size: clamp(15px, 2.6vw, 20px); pointer-events: none;
     text-shadow: 0 2px 8px #000; transition: opacity .6s;
   }
@@ -59,6 +63,8 @@
   <button class="btn" id="hasard">🎲 Au hasard</button>
   <button class="btn" id="double">☀️☀️ Double soleil</button>
   <button class="btn actif" id="trainees">✨ Traînées</button>
+  <button class="btn" id="vitesse">⏱ ×1</button>
+  <button class="btn" id="noms">🏷️ Noms</button>
   <button class="btn" id="effacer">🧹 Effacer</button>
 </nav>
 
@@ -66,6 +72,14 @@
 const GM = 9e6;
 const NOMS = ['Patatoïde', 'Zorblax', 'Bidulon', 'Croquette-7', 'Glouglou', 'Mimosa', 'Pixelia', 'Tartiflette', 'Zoggy', 'Brocolune', 'Nébulix', 'Kiwi-B', 'Saturnin', 'Gromf', 'Lumina', 'Pouet-3', 'Bubulle', 'Vortexa'];
 const TEINTES = [['#a5f3fc', '#0e7490'], ['#fecaca', '#b91c1c'], ['#fde68a', '#b45309'], ['#bbf7d0', '#15803d'], ['#ddd6fe', '#6d28d9'], ['#fbcfe8', '#be185d'], ['#fed7aa', '#c2410c'], ['#bfdbfe', '#1d4ed8']];
+let vitesse = 1, nomsVisibles = false, cometes = [], prochaineComete = 5;
+
+// Les comètes traversent l'écran en ligne droite (simple décor)
+function lancerComete() {
+  const sens = Math.random() < .5 ? 1 : -1, v = 260 + Math.random() * 160;
+  const vx = -sens * v;
+  cometes.push({ x: sens * (W / 2 + 60), y: (Math.random() - .5) * H * .8, vx, vy: (Math.random() - .5) * 120, vie: (W + 240) / v });
+}
 
 const toile = document.getElementById('toile');
 const ctx = toile.getContext('2d');
@@ -122,18 +136,18 @@ function creer(x, y, vx, vy, silencieux) {
   const p = { x, y, vx, vy, r, c1, c2, anneau: r > 9 && Math.random() < .45, incl: (Math.random() - .5) * .8, nom: hasard(NOMS), trace: [], cumul: 0, aPrec: Math.atan2(y, x), tours: 0 };
   planetes.push(p);
   if (planetes.length > 30) planetes.shift();
-  if (!silencieux) annonce(`🪐 ${p.nom} est lancée !`);
+  if (!silencieux) { annonce(`🪐 ${p.nom} est lancée !`); natx.bip(520, .14, 'sine', .08, 780); }
 }
 
-function explosion(p) {
-  for (let i = 0; i < 26; i++) {
+function explosion(p, nombre = 26) {
+  for (let i = 0; i < nombre; i++) {
     const a = Math.random() * 6.3, v = 40 + Math.random() * 140;
     debris.push({ x: p.x, y: p.y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, vie: 1, c: Math.random() < .5 ? p.c1 : '#ffd34d' });
   }
 }
 
 function physique(dt) {
-  const n = 8, h = dt / n;
+  const n = Math.max(8, Math.ceil(dt * 480)), h = dt / n;
   for (let k = 0; k < n; k++) {
     temps += h;
     const ss = soleils(temps);
@@ -143,6 +157,20 @@ function physique(dt) {
       p.x += p.vx * h; p.y += p.vy * h;
       for (const s of ss) if (Math.hypot(p.x - s.x, p.y - s.y) < s.r + p.r * .5) p.mort = 'soleil';
     }
+  }
+  // Deux planètes qui se touchent fusionnent (la plus grosse avale l'autre)
+  for (let i = 0; i < planetes.length; i++) for (let j = i + 1; j < planetes.length; j++) {
+    const a = planetes[i], b = planetes[j];
+    if (a.mort || b.mort || Math.hypot(a.x - b.x, a.y - b.y) > (a.r + b.r) * .8) continue;
+    const ma = a.r ** 3, mb = b.r ** 3, [grosse, petite] = ma >= mb ? [a, b] : [b, a];
+    grosse.vx = (a.vx * ma + b.vx * mb) / (ma + mb);
+    grosse.vy = (a.vy * ma + b.vy * mb) / (ma + mb);
+    grosse.r = Math.min(22, Math.cbrt(ma + mb));
+    grosse.anneau = grosse.anneau || grosse.r > 13;
+    petite.mort = 'fusion';
+    explosion(petite, 12);
+    annonce(`💥 ${grosse.nom} a avalé ${petite.nom} !`);
+    natx.bip(150, .25, 'square', .06, 80);
   }
   for (const p of planetes) {
     if (Math.hypot(p.x, p.y) > Math.max(W, H) * 2.5) p.mort = 'loin';
@@ -164,12 +192,16 @@ function physique(dt) {
     if (p.trace.length > 300) p.trace.splice(0, 2);
   }
   for (const p of planetes) {
-    if (p.mort === 'soleil') { explosion(p); annonce(`☀️ Miam ! Le soleil a mangé ${p.nom}.`); }
+    if (p.mort === 'soleil') { explosion(p); annonce(`☀️ Miam ! Le soleil a mangé ${p.nom}.`); natx.bip(220, .45, 'sawtooth', .06, 50); }
     else if (p.mort === 'loin') annonce(`👋 ${p.nom} part explorer l'univers.`);
   }
   planetes = planetes.filter(p => !p.mort);
   for (const d of debris) { d.x += d.vx * dt; d.y += d.vy * dt; d.vie -= dt * 1.2; }
   debris = debris.filter(d => d.vie > 0);
+  prochaineComete -= dt;
+  if (prochaineComete <= 0) { lancerComete(); prochaineComete = 8 + Math.random() * 10; }
+  for (const c of cometes) { c.x += c.vx * dt; c.y += c.vy * dt; c.vie -= dt; }
+  cometes = cometes.filter(c => c.vie > 0);
 }
 
 function dessinerSoleil(s, t) {
@@ -239,6 +271,17 @@ function dessiner(t) {
   ctx.globalAlpha = 1;
   ctx.setTransform(dpr, 0, 0, dpr, cx * dpr, cy * dpr);
 
+  for (const c of cometes) {
+    const g = ctx.createLinearGradient(c.x, c.y, c.x - c.vx * .3, c.y - c.vy * .3);
+    g.addColorStop(0, 'rgba(255,255,255,.9)');
+    g.addColorStop(1, 'rgba(165,243,252,0)');
+    ctx.strokeStyle = g;
+    ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(c.x, c.y); ctx.lineTo(c.x - c.vx * .3, c.y - c.vy * .3); ctx.stroke();
+    ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.arc(c.x, c.y, 3, 0, 6.283); ctx.fill();
+  }
+
   if (trainees) {
     ctx.lineWidth = 2;
     for (const p of planetes) {
@@ -261,6 +304,11 @@ function dessiner(t) {
   const ss = soleils(temps);
   for (const s of ss) dessinerSoleil(s, t);
   for (const p of planetes) dessinerPlanete(p, ss);
+  if (nomsVisibles) {
+    ctx.font = '800 12px Nunito, sans-serif';
+    ctx.fillStyle = 'rgba(255,255,255,.85)';
+    for (const p of planetes) ctx.fillText(p.nom, p.x + p.r + 5, p.y - p.r - 2);
+  }
   for (const d of debris) {
     ctx.globalAlpha = Math.max(0, d.vie);
     ctx.fillStyle = d.c;
@@ -274,7 +322,7 @@ let avant = performance.now(), image = 0;
 function boucle(maintenant) {
   const dt = Math.min(1 / 30, (maintenant - avant) / 1000);
   avant = maintenant;
-  physique(dt);
+  physique(dt * vitesse);
   dessiner(maintenant / 1000);
   if (++image % 15 === 0) {
     const n = planetes.length;
@@ -331,6 +379,15 @@ document.getElementById('trainees').addEventListener('click', e => {
   e.currentTarget.classList.toggle('actif', trainees);
 });
 document.getElementById('effacer').addEventListener('click', () => { planetes = []; debris = []; });
+document.getElementById('vitesse').addEventListener('click', e => {
+  vitesse = vitesse === 1 ? 3 : vitesse === 3 ? .5 : 1;
+  e.currentTarget.textContent = `⏱ ×${vitesse === .5 ? '½' : vitesse}`;
+  e.currentTarget.classList.toggle('actif', vitesse !== 1);
+});
+document.getElementById('noms').addEventListener('click', e => {
+  nomsVisibles = !nomsVisibles;
+  e.currentTarget.classList.toggle('actif', nomsVisibles);
+});
 
 systemeAuHasard();
 </script>

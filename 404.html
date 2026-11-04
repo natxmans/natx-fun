@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<base href="/natx-fun/">
+<title>Page introuvable · natx.fun</title>
+<link rel="icon" href="icone.svg">
+<link rel="stylesheet" href="commun.css">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#fbf7f0">
+<script src="commun.js"></script>
+<style>
+  .page { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 40px 16px; }
+  .grand { font-family: var(--titre); font-weight: 700; font-size: clamp(90px, 22vw, 180px); line-height: 1; margin: 0; }
+  .grand span { display: inline-block; animation: tombe 2.5s ease-in-out infinite; }
+  .grand span:nth-child(2) { animation-delay: .2s; color: #ff5a36; }
+  .grand span:nth-child(3) { animation-delay: .4s; }
+  @keyframes tombe { 50% { transform: translateY(-14px) rotate(-6deg); } }
+  h1 { font-family: var(--titre); font-weight: 600; font-size: clamp(24px, 5vw, 34px); margin: 10px 0; }
+  p { color: var(--gris); font-size: 18px; max-width: 480px; margin: 0 0 26px; }
+  .boutons { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+  .btn { text-decoration: none; }
+  .jaune { background: #ffd23f; }
+</style>
+</head>
+<body>
+<main class="page">
+  <p class="grand" aria-hidden="true"><span>4</span><span>0</span><span>4</span></p>
+  <h1>Oups, cette page s'est perdue 🫥</h1>
+  <p id="excuse">Elle est peut-être partie jouer à un autre jeu.</p>
+  <div class="boutons">
+    <a class="btn jaune" href="./">🏠 Retour à l'accueil</a>
+    <a class="btn" id="hasard" href="./">🎲 Un jeu au hasard</a>
+  </div>
+</main>
+<script>
+const EXCUSES = [
+  "Elle est peut-être partie jouer à un autre jeu.",
+  "Un pigeon l'a emportée. Encore lui.",
+  "Elle a appuyé sur le bouton interdit. On t'avait prévenu.",
+  "Elle a été mangée par le soleil de Mini Cosmos.",
+  "Elle s'est transformée en patate.",
+];
+document.getElementById('excuse').textContent = EXCUSES[Math.floor(Math.random() * EXCUSES.length)];
+document.getElementById('hasard').href = natx.JEUX[Math.floor(Math.random() * natx.JEUX.length)] + '.html';
+</script>
+</body>
+</html>

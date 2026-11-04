@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nouveautés · natx.fun</title>
+<link rel="icon" href="icone.svg">
+<link rel="stylesheet" href="commun.css">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#fbf7f0">
+<script src="commun.js"></script>
+<style>
+  .page { max-width: 760px; margin: 0 auto; padding: 76px 16px 60px; }
+  h1 { font-family: var(--titre); font-weight: 700; font-size: clamp(34px, 7vw, 54px); margin: 0; text-align: center; }
+  .intro { text-align: center; color: var(--gris); font-size: 18px; margin: 10px 0 30px; }
+  .compteur { display: block; font-family: var(--titre); font-weight: 700; font-size: clamp(60px, 14vw, 96px); color: #ff5a36; line-height: 1; text-align: center; }
+  section { background: #fff; border: 3px solid var(--encre); border-radius: 22px; box-shadow: 0 6px 0 var(--encre); padding: 18px 22px 10px; margin-bottom: 24px; }
+  h2 { font-family: var(--titre); font-weight: 600; font-size: 23px; margin: 0 0 8px; display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+  h2 a { font-family: var(--texte); font-size: 14px; font-weight: 800; background: #ffd23f; border: 2px solid var(--encre); border-radius: 999px; padding: 3px 12px; text-decoration: none; white-space: nowrap; }
+  ol { margin: 0; padding-left: 36px; }
+  li { margin: 0 0 9px; line-height: 1.45; font-size: 16.5px; }
+  li::marker { font-family: var(--titre); font-weight: 700; color: #ff5a36; }
+  .fin { text-align: center; color: var(--gris); }
+</style>
+</head>
+<body>
+<a class="retour" href="index.html">← natx.fun</a>
+
+<main class="page">
+  <span class="compteur">100</span>
+  <h1>améliorations !</h1>
+  <p class="intro">Tout ce qui a changé sur natx.fun, des petits détails aux gros ajouts.</p>
+  <div id="liste"></div>
+  <p class="fin">Et ce n'est pas fini… 👀</p>
+</main>
+
+<script>
+const GROUPES = [
+  ['🌍 Tout le site', null, [
+    "Bouton 🔊 / 🔇 pour couper le son de tous les jeux (le site s'en souvient)",
+    "Bouton 🔗 pour partager chaque jeu (partage du téléphone ou lien copié)",
+    "Bouton ⛶ pour jouer en plein écran",
+    "natx.fun s'installe comme une vraie appli sur téléphone et ordinateur",
+    "Les jeux déjà visités marchent même sans Internet",
+    "Nouvelle icône du site",
+    "Belle image d'aperçu quand on partage le lien (WhatsApp, Discord…)",
+    "Page « 404 » rigolote quand on se trompe d'adresse",
+    "Cette page « Nouveautés »",
+    "Un code secret caché sur toutes les pages (↑ ↑ ↓ ↓ ← → ← → B A)",
+    "Petites notifications communes à tous les jeux",
+    "Confettis partagés par tous les jeux",
+    "Vibrations sur téléphone dans certains jeux",
+    "Contour bien visible quand on navigue au clavier",
+    "Animations réduites si l'appareil le demande (accessibilité)",
+    "Plus de zoom involontaire quand on tape vite sur téléphone",
+    "Texte sélectionné aux couleurs du site",
+    "Couleur de la barre du navigateur assortie au site sur téléphone",
+    "Bouton retour plus clair pour les lecteurs d'écran",
+    "Le site se souvient des jeux que tu as déjà essayés",
+  ]],
+  ['🏠 Accueil', 'index.html', [
+    "Barre de recherche (touche / pour y aller directement)",
+    "Filtres par catégorie : Jeux, Jouets, Rigolo, Science, Musique, Quiz",
+    "Favoris ❤️ : tes jeux préférés passent en premier",
+    "Filtre « Mes favoris »",
+    "Badge ✓ Joué sur les jeux déjà essayés",
+    "Compteur « Tu as essayé X / 12 jeux » avec barre de progression",
+    "Le jeu du jour ⭐, qui change chaque jour",
+    "Message de bienvenue qui dépend de l'heure",
+    "Étiquettes durée + catégorie sur chaque carte",
+    "« Un jeu au hasard » choisit d'abord ceux que tu n'as pas encore essayés",
+    "Message quand aucun jeu ne correspond à ta recherche",
+    "Bouton « Installer l'appli » quand ton appareil le permet",
+    "Un point secret dans le logo (clique dessus 10 fois)",
+    "Liens vers les nouveautés en bas de page",
+  ]],
+  ['🔴 Le Bouton Interdit', 'bouton.html', [
+    "Un son à chaque appui, de plus en plus aigu",
+    "Le téléphone vibre au moment du plantage",
+    "Le total d'appuis de toutes tes parties est sauvegardé",
+    "Le jeu se souvient si tu as déjà gagné le trophée",
+    "Le bouton est prêt au clavier dès le début (Entrée ou Espace)",
+  ]],
+  ['🦸 Pouvoirs Nuls', 'pouvoirs.html', [
+    "10 nouveaux pouvoirs",
+    "10 nouveaux défauts",
+    "Sons de machine à sous",
+    "Ton historique est sauvegardé",
+    "Compteur de pouvoirs tirés et de pouvoirs légendaires trouvés",
+    "Touche Espace pour tirer",
+  ]],
+  ["🍉 Pluie d'Émojis", 'emojis.html', [
+    "Double-clic (ou double-tape) = explosion qui projette les émojis",
+    "Pack Halloween 🎃",
+    "Pack Espace 🚀",
+    "Penche ton téléphone : la gravité suit !",
+    "Raccourcis clavier : S secouer, G gravité, V vider",
+    "Record du plus grand nombre d'émojis à l'écran",
+  ]],
+  ['⚡ Réflexes Éclair', 'reflexe.html', [
+    "Mode Son : réagis à un bip au lieu d'une couleur",
+    "Petit son à chaque résultat",
+    "Historique de tes 5 dernières moyennes",
+    "Message spécial si tu cliques trop tôt plusieurs fois",
+    "Bouton pour partager ton score",
+  ]],
+  ['⚖️ Le Plus Lourd', 'poids.html', [
+    "12 nouveaux objets (dont l'air de ta salle de classe !)",
+    "« Le savais-tu ? » sur les objets surprenants",
+    "Sons bonne / mauvaise réponse",
+    "Petite balance animée qui penche du bon côté",
+    "Rappel des touches ← → et Entrée",
+  ]],
+  ["🌳 L'Arbre Magique", 'arbre.html', [
+    "Cycle automatique des saisons",
+    "Mode nuit avec étoiles et lune",
+    "Lucioles les nuits d'été",
+    "📸 Enregistre ton paysage en image",
+    "Arbres plus variés : grands, larges, penchés",
+  ]],
+  ['🪐 Mini Cosmos', 'cosmos.html', [
+    "Les planètes qui se cognent fusionnent en une plus grosse",
+    "Vitesse du temps ×½, ×1 ou ×3",
+    "Des comètes traversent l'espace",
+    "Bouton pour afficher le nom des planètes",
+    "Sons quand une planète est lancée, mangée ou fusionnée",
+  ]],
+  ['🎹 Boîte à Mélodies', 'melodie.html', [
+    "2 nouveaux instruments : Piano et Synthé",
+    "3 gammes : Joyeuse, Mystère et Asie",
+    "Réglage du volume",
+    "Ta dernière musique est sauvegardée automatiquement",
+    "3 musiques d'exemple",
+    "Raccourcis clavier : R hasard, C effacer",
+  ]],
+  ["🥔 L'Empire de la Patate", 'patate.html', [
+    "15 succès à débloquer",
+    "Panneau de statistiques",
+    "Bouton d'achat ×Max",
+    "Petit son à chaque clic",
+    "Touche Espace pour récolter",
+    "Le titre de l'onglet affiche tes patates",
+  ]],
+  ['🎒 Survivre au Collège', 'college.html', [
+    "12 nouvelles situations",
+    "Collection des 8 fins à découvrir",
+    "Des flèches montrent comment les jauges ont bougé",
+    "Son quand on fait glisser une carte",
+    "Vibration quand c'est perdu",
+    "Touche Entrée pour rejouer",
+  ]],
+  ['🏜️ La Boîte à Sable', 'sable.html', [
+    "Nouvelle matière : la Glace (gèle l'eau, fond près du feu)",
+    "Nouvelle matière : l'Acide (ronge presque tout)",
+    "Mode pluie 🌧️",
+    "📸 Enregistre ta création en image",
+    "Raccourcis clavier : 1 à 0 pour les matières, Espace pour la pause",
+    "Clic droit = gomme",
+  ]],
+  ['🧪 Le Labo des Mélanges', 'labo.html', [
+    "12 nouveaux éléments (92 au total)",
+    "Recherche dans tes éléments",
+    "Tri : ordre de découverte ou A → Z",
+    "Survole un élément pour voir sa recette",
+    "Sons de découverte et de raté",
+  ]],
+];
+
+let numero = 1;
+const liste = document.getElementById('liste');
+for (const [titre, lien, items] of GROUPES) {
+  const s = document.createElement('section');
+  const h = document.createElement('h2');
+  h.textContent = titre;
+  if (lien) {
+    const a = document.createElement('a');
+    a.href = lien;
+    a.textContent = 'Y aller →';
+    h.appendChild(a);
+  }
+  const ol = document.createElement('ol');
+  ol.start = numero;
+  for (const texte of items) {
+    const li = document.createElement('li');
+    li.textContent = texte;
+    ol.appendChild(li);
+    numero++;
+  }
+  s.append(h, ol);
+  liste.appendChild(s);
+}
+document.querySelector('.compteur').textContent = numero - 1;
+</script>
+</body>
+</html>

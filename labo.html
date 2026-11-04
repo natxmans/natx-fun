@@ -6,6 +6,10 @@
 <title>Le Labo des Mélanges · natx.fun</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧪</text></svg>">
 <link rel="stylesheet" href="commun.css">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icone-192.png">
+<meta name="theme-color" content="#fbf7f0">
+<script src="commun.js"></script>
 <style>
   body { background-color: #e6fbf3; background-image: radial-gradient(rgba(6, 95, 70, .12) 1.2px, transparent 1.3px); }
   .page { max-width: 900px; margin: 0 auto; padding: 70px 16px 40px; text-align: center; }
@@ -77,6 +81,13 @@
     <button class="btn" id="indice">💡 Indice</button>
     <button class="btn" id="recommencer">🔄 Recommencer</button>
   </div>
+  <div class="actions">
+    <input class="btn" id="recherche" type="search" placeholder="🔍 Chercher un élément" aria-label="Chercher un élément" style="font-size:15px;cursor:text">
+    <select class="btn" id="tri" aria-label="Trier" style="font-size:15px">
+      <option value="ordre">Ordre de découverte</option>
+      <option value="az">A → Z</option>
+    </select>
+  </div>
   <div class="inventaire" id="inventaire"></div>
 </main>
 
@@ -100,6 +111,9 @@ const E = {
   fantome: ['👻', 'Fantôme'], citrouille: ['🎃', 'Citrouille'], foret: ['🌲', 'Forêt'], ours: ['🐻', 'Ours'], nounours: ['🧸', 'Nounours'],
   avion: ['✈️', 'Avion'], fusee: ['🚀', 'Fusée'], espace: ['🌌', 'Espace'], alien: ['👽', 'Extraterrestre'], planete: ['🪐', 'Planète'],
   chevalier: ['⚔️', 'Chevalier'],
+  chauvesouris: ['🦇', 'Chauve-souris'], vampire: ['🧛', 'Vampire'], zombie: ['🧟', 'Zombie'], cactus: ['🌵', 'Cactus'],
+  manchot: ['🐧', 'Manchot'], ourspolaire: ['🐻‍❄️', 'Ours polaire'], champignon: ['🍄', 'Champignon'], escargot: ['🐌', 'Escargot'],
+  baleine: ['🐋', 'Baleine'], satellite: ['🛰️', 'Satellite'], pain: ['🍞', 'Pain'], pizza: ['🍕', 'Pizza'],
 };
 const RECETTES = [
   ['eau', 'feu', 'vapeur'], ['eau', 'terre', 'boue'], ['feu', 'terre', 'lave'], ['air', 'feu', 'energie'], ['air', 'eau', 'pluie'],
@@ -121,6 +135,9 @@ const RECETTES = [
   ['arbre', 'arbre', 'foret'], ['vie', 'foret', 'ours'], ['ours', 'miel', 'nounours'], ['metal', 'oiseau', 'avion'], ['avion', 'feu', 'fusee'],
   ['fusee', 'nuit', 'espace'], ['vie', 'espace', 'alien'], ['terre', 'espace', 'planete'], ['dragon', 'humain', 'chevalier'],
   ['glace', 'feu', 'eau'],
+  ['oiseau', 'nuit', 'chauvesouris'], ['chauvesouris', 'humain', 'vampire'], ['squelette', 'vie', 'zombie'], ['plante', 'sable', 'cactus'],
+  ['oiseau', 'glace', 'manchot'], ['ours', 'neige', 'ourspolaire'], ['foret', 'pluie', 'champignon'], ['ver', 'pierre', 'escargot'],
+  ['poisson', 'montagne', 'baleine'], ['fusee', 'ordinateur', 'satellite'], ['cuisinier', 'plante', 'pain'], ['cuisinier', 'pain', 'pizza'],
 ];
 const BASE = ['eau', 'feu', 'terre', 'air'];
 const TOTAL = Object.keys(E).length;
@@ -138,6 +155,16 @@ const slots = [document.getElementById('s0'), document.getElementById('s1')];
 const res = document.getElementById('res');
 const message = document.getElementById('message');
 const inventaire = document.getElementById('inventaire');
+const recherche = document.getElementById('recherche'), tri = document.getElementById('tri');
+const simplifier = s => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+// Texte d'aide : comment on fabrique cet élément
+function recette(id) {
+  if (BASE.includes(id)) return 'Élément de base';
+  const r = RECETTES.find(([, , res]) => res === id);
+  return `Fabriqué avec : ${E[r[0]][0]} ${E[r[0]][1]} + ${E[r[1]][0]} ${E[r[1]][1]}`;
+}
+recherche.addEventListener('input', () => afficherInventaire());
+tri.addEventListener('change', () => afficherInventaire());
 
 function remplir(el, id) {
   el.classList.toggle('plein', !!id);
@@ -150,11 +177,14 @@ function epuise(id) {
 }
 
 function afficherInventaire() {
-  inventaire.replaceChildren(...connus.map(id => {
+  const q = simplifier(recherche.value.trim());
+  const liste = connus.filter(id => !q || simplifier(E[id][1]).includes(q));
+  if (tri.value === 'az') liste.sort((a, b) => E[a][1].localeCompare(E[b][1], 'fr'));
+  inventaire.replaceChildren(...liste.map(id => {
     const b = document.createElement('button');
     b.className = 'el' + (choix.includes(id) ? ' choisi' : '') + (id === dernierNouveau ? ' nouveau' : '') + (epuise(id) ? ' epuise' : '');
     b.innerHTML = `<span>${E[id][0]}</span>${E[id][1]}`;
-    if (epuise(id)) b.title = 'Plus rien à découvrir avec cet élément';
+    b.title = recette(id) + (epuise(id) ? ' · plus rien à découvrir avec' : '');
     b.addEventListener('click', () => choisir(id));
     return b;
   }));
@@ -187,6 +217,7 @@ function melanger() {
   void res.offsetWidth;
   if (!r) {
     res.classList.add('rate');
+    natx.son('rate');
     res.innerHTML = '<b>💨</b>';
     message.textContent = 'Rien ne se passe… 🤔';
     setTimeout(vider, 900);
@@ -199,6 +230,7 @@ function melanger() {
     dernierNouveau = null;
   } else {
     res.classList.add('trouve');
+    natx.son('tada');
     connus.push(r);
     dernierNouveau = r;
     sauver();

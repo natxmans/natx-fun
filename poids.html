@@ -6,6 +6,10 @@
 <title>Le Plus Lourd · natx.fun</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚖️</text></svg>">
 <link rel="stylesheet" href="commun.css">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icone-192.png">
+<meta name="theme-color" content="#fbf7f0">
+<script src="commun.js"></script>
 <style>
   body { background: #e6fbf2; }
   .page { max-width: 820px; margin: 0 auto; padding: 80px 16px 50px; text-align: center; }
@@ -35,6 +39,17 @@
   .verdict b { font-family: var(--titre); }
   .verdict sup { font-size: .65em; }
   #suivant[hidden] { display: none; }
+  .info { display: block; margin-top: 8px; font-size: 16px; color: #065f46; background: #d1fae5; border-radius: 12px; padding: 8px 12px; }
+  .touches { color: var(--gris); font-size: 14px; margin-top: 18px; }
+  .balance { width: 220px; height: 44px; margin: 22px auto 0; position: relative; }
+  .fleau {
+    position: absolute; left: 0; right: 0; top: 6px; height: 8px; background: var(--encre); border-radius: 6px;
+    transition: transform .6s cubic-bezier(.3, 1.6, .5, 1);
+  }
+  .fleau::before, .fleau::after { content: ''; position: absolute; top: -12px; width: 34px; height: 12px; background: #fde68a; border: 3px solid var(--encre); border-radius: 0 0 14px 14px; border-top: 0; }
+  .fleau::before { left: -6px; }
+  .fleau::after { right: -6px; }
+  .socle { position: absolute; left: 50%; top: 10px; margin-left: -16px; border-left: 16px solid transparent; border-right: 16px solid transparent; border-bottom: 32px solid var(--encre); }
 
   @media (max-width: 600px) {
     .duel { grid-template-columns: 1fr; }
@@ -56,8 +71,10 @@
     <div class="ou">OU</div>
     <button class="choix" id="c1"><span class="emoji"></span><span class="nom"></span><span class="poids"></span></button>
   </section>
+  <div class="balance" aria-hidden="true"><i class="socle"></i><i class="fleau" id="fleau"></i></div>
   <p class="verdict" id="verdict"></p>
   <button class="btn" id="suivant" hidden>Suivant →</button>
+  <p class="touches">Astuce : touches ← → pour choisir, Entrée pour continuer</p>
 </main>
 
 <script>
@@ -108,7 +125,33 @@ const OBJETS = [
   ['🌍', "La Terre", 5.97e24],
   ['🪐', "Jupiter", 1.9e27],
   ['☀️', "Le Soleil", 1.99e30],
+  ['🦟', "Un moustique", 2.5e-6],
+  ['🐌', "Un escargot", .01],
+  ['🍫', "Une tablette de chocolat", .1],
+  ['🥤', "Une canette pleine", .35],
+  ['🏀', "Un ballon de basket", .62],
+  ['🦔', "Un hérisson", .8],
+  ['🐧', "Un manchot empereur", 35],
+  ['💨', "L'air d'une salle de classe", 200],
+  ['🦈', "Un grand requin blanc", 1000],
+  ['🦒', "Une girafe", 1200],
+  ['🌳', "Un grand chêne", 1e4],
+  ['🦕', "Un argentinosaure", 7e4],
 ];
+// « Le savais-tu ? » pour les objets les plus surprenants
+const INFOS = {
+  "Un petit nuage": "Il flotte parce que ses gouttes sont minuscules et réparties dans un énorme volume d'air.",
+  "L'air d'une salle de classe": "Un mètre cube d'air pèse environ 1,2 kg. On ne le sent pas, car il appuie de tous les côtés.",
+  "Une baleine bleue": "C'est le plus gros animal connu de tous les temps, plus lourd que n'importe quel dinosaure découvert.",
+  "La tour Eiffel": "Si on fondait son fer, il ne formerait qu'une plaque d'environ 6 cm d'épaisseur sur sa base carrée.",
+  "Le Soleil": "Il contient plus de 99,8 % de toute la masse du système solaire.",
+  "L'humanité entière": "Toutes les bactéries de la Terre réunies pèsent encore beaucoup plus lourd que tous les humains.",
+  "Un diamant d'un carat": "Le mot « carat » viendrait des graines de caroubier, qu'on utilisait autrefois comme petits poids.",
+  "Un cerveau humain": "Il pèse environ 2 % de ton corps, mais utilise à peu près 20 % de ton énergie.",
+  "La Station spatiale internationale": "Elle fait le tour de la Terre en environ 90 minutes.",
+  "Une goutte d'eau": "Il faut à peu près 20 gouttes pour faire un seul millilitre d'eau.",
+  "Un argentinosaure": "C'est l'un des plus gros dinosaures connus… et pourtant une baleine bleue pèse environ deux fois plus.",
+};
 
 const choix = [document.getElementById('c0'), document.getElementById('c1')];
 const verdict = document.getElementById('verdict');
@@ -170,6 +213,7 @@ function manche() {
   });
   verdict.innerHTML = '';
   suivant.hidden = true;
+  document.getElementById('fleau').style.transform = '';
 }
 
 // Le chiffre « monte » jusqu'au vrai poids
@@ -195,7 +239,12 @@ function choisir(i) {
   if (!gagne) choix[i].classList.add('mauvais');
 
   const L = paire[lourd], l = paire[1 - lourd];
-  const fait = `${L[1]} pèse environ <b>${fois(L[2] / l[2])} fois</b> plus ${que(l[1])}.`;
+  const info = INFOS[L[1]] || INFOS[l[1]];
+  const fait = `${L[1]} pèse environ <b>${fois(L[2] / l[2])} fois</b> plus ${que(l[1])}.`
+    + (info ? `<span class="info">💡 Le savais-tu ? ${info}</span>` : '');
+  document.getElementById('fleau').style.transform = `rotate(${lourd ? 12 : -12}deg)`;
+  natx.son(gagne ? 'bon' : 'rate');
+  if (!gagne) natx.vibrer(120);
   if (gagne) {
     serie++;
     if (serie > record) {

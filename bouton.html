@@ -6,6 +6,10 @@
 <title>Le Bouton Interdit · natx.fun</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔴</text></svg>">
 <link rel="stylesheet" href="commun.css">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icone-192.png">
+<meta name="theme-color" content="#fbf7f0">
+<script src="commun.js"></script>
 <style>
   body { min-height: 100vh; overflow: hidden; transition: background .6s, color .6s; }
   body.nuit { background: #15131d; color: #f4f1ea; }
@@ -164,9 +168,13 @@ function dire(texte) {
   msg.classList.add('pop');
 }
 
+// Le total de toutes les parties est gardé dans le navigateur
+const totalAvant = natx.lire('natx-bouton-total', 0);
 function compter() {
   appuis++;
-  compteur.textContent = 'Appuis : ' + appuis;
+  compteur.textContent = 'Appuis : ' + appuis + (totalAvant ? ` · Total de toutes tes parties : ${totalAvant + appuis}` : '');
+  natx.ecrire('natx-bouton-total', totalAvant + appuis);
+  natx.bip(200 + Math.min(appuis, 60) * 15, .08, 'square', .05);
 }
 
 function secouer() {
@@ -278,6 +286,8 @@ function finEssaim() {
 // Faux écran de plantage
 function planter() {
   bloque = true;
+  natx.vibrer([200, 100, 400]);
+  natx.bip(160, .6, 'sawtooth', .08, 40);
   document.body.classList.remove('alerte');
   bouton.classList.remove('chaud');
   crash.hidden = false;
@@ -306,6 +316,8 @@ function recompense() {
   t.className = 'trophee';
   t.innerHTML = '<span>🏆</span><small>Trophée officiel de la Désobéissance</small>';
   scene.insertBefore(t, zone);
+  natx.ecrire('natx-bouton-trophee', true);
+  natx.son('tada');
   const couleurs = ['#ff5a36', '#ffd23f', '#3ddc97', '#38bdf8', '#a78bfa', '#ff8fab'];
   for (let i = 0; i < 120; i++) {
     const c = document.createElement('i');
@@ -318,6 +330,10 @@ function recompense() {
     setTimeout(() => c.remove(), 6000);
   }
 }
+
+if (natx.lire('natx-bouton-trophee', false)) msg.textContent = "Te revoilà ? Tu as déjà le trophée… Alors n'appuie surtout pas.";
+if (totalAvant) compteur.textContent = `Total de toutes tes parties : ${totalAvant}`;
+bouton.focus({ preventScroll: true });
 
 function phraseSansFin() {
   if (paliers[appuis]) return paliers[appuis];

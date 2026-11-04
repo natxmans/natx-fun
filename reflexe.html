@@ -6,6 +6,10 @@
 <title>Réflexes Éclair · natx.fun</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
 <link rel="stylesheet" href="commun.css">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icone-192.png">
+<meta name="theme-color" content="#fbf7f0">
+<script src="commun.js"></script>
 <style>
   html, body { height: 100%; }
   .panneau {
@@ -17,6 +21,12 @@
   .attente { background: #ef4444; }
   .go { background: #22c55e; }
   .trop-tot { background: #f59e0b; }
+  .ecoute { background: #475569; }
+  .mode {
+    font: inherit; font-weight: 800; font-size: 16px; color: #fff; cursor: pointer; margin: 8px 0;
+    background: rgba(255, 255, 255, .15); border: 2px solid rgba(255, 255, 255, .7); border-radius: 999px; padding: 8px 18px;
+  }
+  .mode:hover { background: rgba(255, 255, 255, .28); }
   .contenu { max-width: 620px; }
   .icone { font-size: 80px; line-height: 1; }
   h1 { font-family: var(--titre); font-weight: 700; font-size: clamp(38px, 8vw, 64px); margin: 10px 0; line-height: 1.05; }
@@ -50,34 +60,63 @@ const ANIMAUX = [
 
 const panneau = document.getElementById('panneau');
 const contenu = document.getElementById('contenu');
-let etat, temps = [], t0 = 0, minuteur = null, depuis = 0;
+let etat, temps = [], t0 = 0, minuteur = null, depuis = 0, tropTot = 0;
+let modeSon = natx.lire('natx-reflexe-son', false);
 
-function lireRecord() { try { return Number(localStorage.getItem('natx-reflexe-record')) || 0; } catch { return 0; } }
-function ecrireRecord(v) { try { localStorage.setItem('natx-reflexe-record', v); } catch {} }
+// Un record pour chaque mode
+const cleRecord = () => modeSon ? 'natx-reflexe-record-son' : 'natx-reflexe-record';
+function lireRecord() { return Number(natx.lire(cleRecord(), 0)) || 0; }
+function ecrireRecord(v) { natx.ecrire(cleRecord(), v); }
 
-function afficher(nouvelEtat, html) {
+function afficher(nouvelEtat, html, classe = nouvelEtat) {
   etat = nouvelEtat;
   depuis = performance.now();
-  panneau.className = 'panneau ' + nouvelEtat;
+  panneau.className = 'panneau ' + classe;
   contenu.innerHTML = html;
+}
+
+// Un bouton dans le panneau ne doit pas lancer la partie
+function boutonInterne(id, action) {
+  const b = document.getElementById(id);
+  b.addEventListener('pointerdown', e => e.stopPropagation());
+  b.addEventListener('keydown', e => e.stopPropagation());
+  b.addEventListener('click', e => { e.stopPropagation(); action(); });
 }
 
 function accueil() {
   temps = [];
+  tropTot = 0;
   const rec = lireRecord();
+  const historique = natx.lire('natx-reflexe-historique', []);
   afficher('accueil', `
-    <div class="icone">⚡</div>
+    <div class="icone">${modeSon ? '👂' : '⚡'}</div>
     <h1>Réflexes Éclair</h1>
-    <p>Quand l'écran devient <b>vert</b>, clique le plus vite possible.</p>
-    <p class="discret">${ESSAIS} essais · clique n'importe où pour commencer${rec ? ` · ton record : ${rec} ms` : ''}</p>`);
+    <p>${modeSon ? 'Dès que tu entends le <b>bip</b>, clique le plus vite possible.' : "Quand l'écran devient <b>vert</b>, clique le plus vite possible."}</p>
+    <p class="discret">${ESSAIS} essais · clique n'importe où pour commencer${rec ? ` · ton record : ${rec} ms` : ''}</p>
+    <button class="mode" id="mode">Mode : ${modeSon ? '🔊 Son' : '👀 Couleur'} · changer</button>
+    ${historique.length ? `<p class="discret">Tes dernières moyennes : ${historique.join(' ms · ')} ms</p>` : ''}`);
+  boutonInterne('mode', () => {
+    modeSon = !modeSon;
+    natx.ecrire('natx-reflexe-son', modeSon);
+    if (modeSon && natx.estMuet()) natx.toast('🔇 Le son est coupé : remets-le avec 🔊 en haut à droite');
+    accueil();
+  });
 }
 
 function attendre() {
-  afficher('attente', `<p class="grand">…</p><h1>Attends le vert</h1>`);
+  if (modeSon) afficher('attente', `<p class="grand">👂</p><h1>Écoute…</h1><p>Clique dès que tu entends le bip.</p>`, 'ecoute');
+  else afficher('attente', `<p class="grand">…</p><h1>Attends le vert</h1>`);
   minuteur = setTimeout(go, 1500 + Math.random() * 3000);
 }
 
 function go() {
+  // En mode son, l'écran ne change pas : il faut écouter (sauf si le son est coupé)
+  if (modeSon && !natx.estMuet()) {
+    etat = 'go';
+    natx.bip(880, .25, 'square', .2);
+    t0 = performance.now();
+    return;
+  }
   afficher('go', `<h1 class="grand">CLIQUE !</h1>`);
   requestAnimationFrame(() => t0 = performance.now());
 }
@@ -87,11 +126,17 @@ function action(e) {
   if (etat === 'accueil' || etat === 'resultat' || etat === 'trop-tot') return attendre();
   if (etat === 'attente') {
     clearTimeout(minuteur);
-    return afficher('trop-tot', `<div class="icone">😅</div><h1>Trop tôt !</h1><p>Attends que l'écran soit vert. Clique pour réessayer.</p>`);
+    tropTot++;
+    natx.son('rate');
+    const texte = tropTot >= 5 ? '😤 5 fois trop tôt ! Tu essaies de deviner, avoue.'
+      : tropTot >= 3 ? 'Encore trop tôt ! Respire un grand coup… 🧘'
+      : modeSon ? 'Attends le bip.' : "Attends que l'écran soit vert.";
+    return afficher('trop-tot', `<div class="icone">😅</div><h1>Trop tôt !</h1><p>${texte} Clique pour réessayer.</p>`);
   }
   if (etat === 'go') {
     const ms = Math.round((e.timeStamp || performance.now()) - t0);
     temps.push(Math.max(1, ms));
+    natx.son('pop');
     if (temps.length >= ESSAIS) return fin();
     return afficher('resultat', `<p class="grand">${ms} ms</p><p>Essai ${temps.length}/${ESSAIS} — clique pour continuer</p>`);
   }
@@ -105,6 +150,8 @@ function fin() {
   const ancien = lireRecord();
   const nouveau = !ancien || moy < ancien;
   if (nouveau) ecrireRecord(moy);
+  natx.ecrire('natx-reflexe-historique', [moy, ...natx.lire('natx-reflexe-historique', [])].slice(0, 5));
+  natx.son(nouveau ? 'tada' : 'bon');
   const barres = temps.map((t, i) =>
     `<div><span>${i + 1}.</span><i style="width:${Math.min(100, t / 6)}%"></i><span>${t} ms</span></div>`).join('');
   afficher('fin', `
@@ -114,7 +161,9 @@ function fin() {
     <p class="animal">Tu es aussi rapide que ${nom}.</p>
     <div class="barres">${barres}</div>
     <p>Meilleur essai : ${meilleur} ms ${nouveau ? '· 🎉 Nouveau record !' : `· Record : ${ancien} ms`}</p>
+    <button class="mode" id="partager">📤 Partager mon score</button>
     <p class="discret">La plupart des gens font environ 250 ms. Clique pour rejouer.</p>`);
+  boutonInterne('partager', () => natx.partager(`J'ai fait ${moy} ms de moyenne à Réflexes Éclair${modeSon ? ' (mode son)' : ''} : aussi rapide que ${nom} ! Et toi ?`));
 }
 
 panneau.addEventListener('pointerdown', action);

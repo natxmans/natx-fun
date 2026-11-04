@@ -6,6 +6,10 @@
 <title>Pluie d'Émojis · natx.fun</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍉</text></svg>">
 <link rel="stylesheet" href="commun.css">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icone-192.png">
+<meta name="theme-color" content="#fbf7f0">
+<script src="commun.js"></script>
 <style>
   html, body { height: 100%; overflow: hidden; }
   body { background: linear-gradient(#bae6fd, #e0f2fe 70%); touch-action: none; user-select: none; }
@@ -16,7 +20,7 @@
     pointer-events: none; transition: opacity .6s;
   }
   .compte {
-    position: fixed; top: 16px; right: 16px; font-family: var(--titre); font-weight: 600;
+    position: fixed; top: 64px; right: 16px; font-family: var(--titre); font-weight: 600; text-align: right;
     background: #fff; border: 2px solid var(--encre); border-radius: 999px; padding: 5px 14px; box-shadow: 0 3px 0 var(--encre);
   }
   .barre {
@@ -25,7 +29,9 @@
     display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: center;
     background: #fff; border: 3px solid var(--encre); border-radius: 20px; box-shadow: 0 5px 0 var(--encre); padding: 10px 12px;
   }
-  .packs { display: flex; gap: 6px; }
+  .packs { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
+  .barre .btn.actif { background: #fde68a; }
+  .barre .btn[hidden] { display: none; }
   .pack {
     width: 44px; height: 44px; font-size: 24px; border-radius: 12px; border: 2px solid transparent;
     background: #f1f5f9; cursor: pointer; padding: 0;
@@ -38,13 +44,14 @@
 
 <a class="retour" href="index.html">← natx.fun</a>
 <canvas id="toile"></canvas>
-<p class="astuce" id="astuce">Clique (ou reste appuyé) pour faire pleuvoir des émojis</p>
+<p class="astuce" id="astuce">Clique (ou reste appuyé) pour faire pleuvoir des émojis<br><small>Double-clic = explosion 💥</small></p>
 <div class="compte" id="compte">0 émoji</div>
 <nav class="barre" id="barre">
   <div class="packs" id="packs"></div>
   <button class="btn" id="secouer">💥 Secouer</button>
   <button class="btn" id="inverser">🙃 Gravité</button>
   <button class="btn" id="vider">🧹 Vider</button>
+  <button class="btn" id="pencher" hidden>📱 Pencher</button>
 </nav>
 
 <script>
@@ -54,7 +61,10 @@ const PACKS = {
   tetes: ['😀', '😂', '😎', '🤩', '🥳', '😜', '🤪', '😱', '🤯', '😴', '🤠', '👽', '🤖', '💩'],
   sport: ['⚽', '🏀', '🏈', '⚾', '🎾', '🏐', '🏉', '🎱', '🥎'],
   bonbons: ['🍬', '🍭', '🍫', '🍩', '🍪', '🧁', '🍰', '🍦', '🍿'],
+  halloween: ['🎃', '👻', '🦇', '🕷️', '💀', '🍬', '🧙', '🕸️', '🧛'],
+  espace: ['🪐', '🚀', '🌍', '🌙', '⭐', '☄️', '👽', '🛸', '☀️'],
 };
+let gx = 0, gy = 1, record = natx.lire('natx-emojis-record', 0);
 const MAX = 600, GRAVITE = 2200, CELL = 60;
 
 const toile = document.getElementById('toile');
@@ -139,11 +149,11 @@ function murs() {
 
 // Physique « Verlet » : la vitesse est la différence entre la position actuelle et l'ancienne
 function pas(h) {
-  const ay = GRAVITE * (inverse ? -1 : 1) * h * h;
+  const k = GRAVITE * (inverse ? -1 : 1) * h * h, ax = gx * k, ay = gy * k;
   for (const b of balles) {
     const vx = (b.x - b.px) * .998, vy = (b.y - b.py) * .998;
     b.px = b.x; b.py = b.y;
-    b.x += vx; b.y += vy + ay;
+    b.x += vx + ax; b.y += vy + ay;
     b.a += vx / b.r;
   }
   for (let k = 0; k < 2; k++) { collisions(); murs(); }
@@ -167,14 +177,66 @@ function boucle(t) {
   if (appui && t - dernierAjout > 35) { ajouter(sx + (Math.random() - .5) * 24, sy); dernierAjout = t; }
   while (reste >= PAS) { pas(PAS); reste -= PAS; }
   dessiner();
-  if (++img % 10 === 0) document.getElementById('compte').textContent = balles.length + (balles.length > 1 ? ' émojis' : ' émoji');
+  if (++img % 10 === 0) {
+    if (balles.length > record) { record = balles.length; if (img % 60 === 0) natx.ecrire('natx-emojis-record', record); }
+    document.getElementById('compte').textContent = balles.length + (balles.length > 1 ? ' émojis' : ' émoji') + (record ? ` · record ${record}` : '');
+  }
   requestAnimationFrame(boucle);
 }
 requestAnimationFrame(boucle);
 
+// Deux appuis rapides au même endroit = explosion
+let dernierAppui = { t: 0, x: 0, y: 0 };
+function exploser(x, y) {
+  for (const b of balles) {
+    const dx = b.x - x, dy = b.y - y, d = Math.hypot(dx, dy) || 1;
+    if (d > 280) continue;
+    const force = (1 - d / 280) * 45;
+    b.px = b.x - dx / d * force;
+    b.py = b.y - dy / d * force;
+  }
+  natx.bip(130, .35, 'sawtooth', .09, 40);
+  natx.vibrer(60);
+}
 toile.addEventListener('pointerdown', e => {
+  const t = performance.now();
+  if (t - dernierAppui.t < 320 && Math.hypot(e.clientX - dernierAppui.x, e.clientY - dernierAppui.y) < 40) {
+    exploser(e.clientX, e.clientY);
+    dernierAppui.t = 0;
+    return;
+  }
+  dernierAppui = { t, x: e.clientX, y: e.clientY };
   appui = true; sx = e.clientX; sy = e.clientY; dernierAjout = 0;
   document.getElementById('astuce').style.opacity = 0;
+});
+addEventListener('pagehide', () => natx.ecrire('natx-emojis-record', record));
+
+// Raccourcis clavier
+addEventListener('keydown', e => {
+  const k = e.key.toLowerCase();
+  if (k === 's') document.getElementById('secouer').click();
+  if (k === 'g') document.getElementById('inverser').click();
+  if (k === 'v') document.getElementById('vider').click();
+});
+
+// Sur téléphone : la gravité suit l'inclinaison
+const pencher = document.getElementById('pencher');
+let penche = false;
+if ('DeviceOrientationEvent' in window && matchMedia('(pointer: coarse)').matches) pencher.hidden = false;
+function orientation(e) {
+  if (e.gamma === null) return;
+  gx = Math.max(-1, Math.min(1, e.gamma / 45));
+  gy = Math.max(-1, Math.min(1, e.beta / 45));
+  if (Math.hypot(gx, gy) < .25) gy = .25;
+}
+pencher.addEventListener('click', async () => {
+  if (!penche && typeof DeviceOrientationEvent.requestPermission === 'function') {
+    try { if (await DeviceOrientationEvent.requestPermission() !== 'granted') return; } catch { return; }
+  }
+  penche = !penche;
+  pencher.classList.toggle('actif', penche);
+  if (penche) { addEventListener('deviceorientation', orientation); natx.toast('📱 Penche ton téléphone !'); }
+  else { removeEventListener('deviceorientation', orientation); gx = 0; gy = 1; }
 });
 addEventListener('pointermove', e => { sx = e.clientX; sy = e.clientY; });
 addEventListener('pointerup', () => appui = false);
