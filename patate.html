@@ -5,11 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>L'Empire de la Patate · natx.fun</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🥔</text></svg>">
-<link rel="stylesheet" href="commun.css">
+<link rel="stylesheet" href="commun.css?v=2">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icone-192.png">
 <meta name="theme-color" content="#fbf7f0">
-<script src="commun.js"></script>
+<script src="commun.js?v=2"></script>
 <style>
   body { background: #fff4df; background-image: radial-gradient(rgba(120, 72, 20, .09) 1.5px, transparent 1.6px); background-size: 24px 24px; }
   .jeu {
@@ -91,7 +91,8 @@
     background: var(--encre); color: #fff; font-weight: 700; padding: 10px 18px; border-radius: 14px;
     transition: transform .35s cubic-bezier(.3, 1.4, .5, 1); max-width: calc(100% - 140px); text-align: center;
   }
-  .toast.visible { transform: translate(-50%, 0); }
+  .toast.visible { transform: translate(-50%, 0); opacity: 1; }
+  .toast { opacity: 0; transition: transform .35s cubic-bezier(.3, 1.4, .5, 1), opacity .2s; }
 
   @media (max-width: 760px) {
     .jeu { grid-template-columns: 1fr; }

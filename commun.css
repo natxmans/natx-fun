@@ -90,3 +90,25 @@ input, select { accent-color: #ff5a36; }
 .btn:hover { transform: translateY(-1px); box-shadow: 0 5px 0 var(--encre); }
 .btn:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--encre); }
 .btn:disabled { opacity: .5; cursor: default; transform: none; box-shadow: 0 4px 0 var(--encre); }
+
+/* ---------- Téléphones et tablettes ---------- */
+canvas { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+@media (max-width: 640px), (max-height: 500px) {
+  /* Les barres d'outils des jeux tiennent sur une seule ligne qu'on fait glisser avec le doigt */
+  .barre {
+    flex-wrap: nowrap !important; justify-content: flex-start !important; overflow-x: auto;
+    max-width: calc(100% - 16px) !important; padding: 8px !important; bottom: 10px !important;
+    scrollbar-width: none; touch-action: pan-x; overscroll-behavior: contain;
+  }
+  .barre::-webkit-scrollbar { display: none; }
+  .barre button, .barre .sep, .barre .packs { flex-shrink: 0; }
+  .barre .packs { flex-wrap: nowrap !important; }
+  .natx-outils { gap: 6px; right: 10px; }
+  .natx-outils button { width: 34px; height: 34px; font-size: 15px; }
+  .retour { left: 10px; font-size: 15px; padding: 5px 12px; }
+}
+/* Sur un écran tactile, un bouton ne doit pas rester « soulevé » après l'avoir touché */
+@media (hover: none) {
+  .btn:hover { transform: none; box-shadow: 0 4px 0 var(--encre); }
+  .natx-outils button:hover, .retour:hover { transform: none; }
+}

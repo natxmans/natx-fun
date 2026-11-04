@@ -5,11 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Le Plus Lourd · natx.fun</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚖️</text></svg>">
-<link rel="stylesheet" href="commun.css">
+<link rel="stylesheet" href="commun.css?v=2">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icone-192.png">
 <meta name="theme-color" content="#fbf7f0">
-<script src="commun.js"></script>
+<script src="commun.js?v=2"></script>
 <style>
   body { background: #e6fbf2; }
   .page { max-width: 820px; margin: 0 auto; padding: 80px 16px 50px; text-align: center; }
@@ -51,11 +51,22 @@
   .fleau::after { right: -6px; }
   .socle { position: absolute; left: 50%; top: 10px; margin-left: -16px; border-left: 16px solid transparent; border-right: 16px solid transparent; border-bottom: 32px solid var(--encre); }
 
+  /* Sur téléphone : cartes en longueur pour que tout tienne sur l'écran */
   @media (max-width: 600px) {
-    .duel { grid-template-columns: 1fr; }
-    .ou { margin: 0 auto; }
-    .choix { min-height: 0; padding: 18px; }
-    .emoji { font-size: 64px; }
+    .page { padding-top: 64px; }
+    h1 { font-size: 28px; }
+    .score { margin: 8px 0 14px; }
+    .duel { grid-template-columns: 1fr; gap: 8px; }
+    .ou { margin: 0 auto; width: 40px; height: 40px; font-size: 16px; }
+    .choix {
+      display: grid; grid-template-columns: auto 1fr; column-gap: 14px; row-gap: 2px;
+      align-items: center; text-align: left; padding: 12px 16px; min-height: 0;
+    }
+    .choix .emoji { grid-row: span 2; font-size: 52px; }
+    .choix .nom { font-size: 19px; }
+    .choix .poids { font-size: 21px; min-height: 0; }
+    .balance { margin-top: 12px; transform: scale(.8); }
+    .verdict { margin: 10px auto; font-size: 17px; }
   }
 </style>
 </head>
@@ -64,7 +75,7 @@
 <a class="retour" href="index.html">← natx.fun</a>
 
 <main class="page">
-  <h1>Lequel est le plus <span>lourd</span> ?</h1>
+  <h1>Lequel est le plus <span>lourd</span>&nbsp;?</h1>
   <p class="score"><span>Série : <b id="serie">0</b></span><span>Record : <b id="record">0</b></span></p>
   <section class="duel">
     <button class="choix" id="c0"><span class="emoji"></span><span class="nom"></span><span class="poids"></span></button>
